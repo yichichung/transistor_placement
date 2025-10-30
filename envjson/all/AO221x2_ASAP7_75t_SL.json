@@ -1,0 +1,97 @@
+{
+  "cell_name": "AO221x2_ASAP7_75t_SL",
+  "devices": [
+    {
+      "W_norm": 1.0,
+      "poly_parity": 0,
+      "net_src": "VDD",
+      "net_drn": "Y",
+      "gate_net": "yn"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 1,
+      "net_src": "s2",
+      "net_drn": "s1",
+      "gate_net": "C"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 0,
+      "net_src": "yn",
+      "net_drn": "s2",
+      "gate_net": "B2"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 1,
+      "net_src": "VDD",
+      "net_drn": "s1",
+      "gate_net": "A2"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 0,
+      "net_src": "yn",
+      "net_drn": "s2",
+      "gate_net": "B1"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 1,
+      "net_src": "VDD",
+      "net_drn": "s1",
+      "gate_net": "A1"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 0,
+      "net_src": "VSS",
+      "net_drn": "Y",
+      "gate_net": "yn"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 1,
+      "net_src": "VSS",
+      "net_drn": "yn",
+      "gate_net": "C"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 0,
+      "net_src": "VSS",
+      "net_drn": "net23",
+      "gate_net": "B2"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 1,
+      "net_src": "net23",
+      "net_drn": "yn",
+      "gate_net": "B1"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 0,
+      "net_src": "net24",
+      "net_drn": "yn",
+      "gate_net": "A1"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 1,
+      "net_src": "VSS",
+      "net_drn": "net24",
+      "gate_net": "A2"
+    }
+  ],
+  "nets": [],
+  "constraints": {
+    "pair_map": {},
+    "row_pitch": 0.27,
+    "poly_pitch": 0.054,
+    "y_pmos": 1.0,
+    "y_nmos": 0.0
+  }
+}

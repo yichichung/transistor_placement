@@ -1,0 +1,41 @@
+{
+  "cell_name": "NOR2x2_ASAP7_75t_R",
+  "devices": [
+    {
+      "W_norm": 1.0,
+      "poly_parity": 0,
+      "net_src": "Y",
+      "net_drn": "net16",
+      "gate_net": "B"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 1,
+      "net_src": "net16",
+      "net_drn": "VDD",
+      "gate_net": "A"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 0,
+      "net_src": "Y",
+      "net_drn": "VSS",
+      "gate_net": "A"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 1,
+      "net_src": "Y",
+      "net_drn": "VSS",
+      "gate_net": "B"
+    }
+  ],
+  "nets": [],
+  "constraints": {
+    "pair_map": {},
+    "row_pitch": 0.27,
+    "poly_pitch": 0.054,
+    "y_pmos": 1.0,
+    "y_nmos": 0.0
+  }
+}

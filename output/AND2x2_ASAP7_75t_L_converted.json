@@ -1,0 +1,99 @@
+{
+  "devices": [
+    {
+      "name": "MN0",
+      "type": "NMOS",
+      "w": 2.43e-07,
+      "l": 0.05,
+      "nf": 1,
+      "vt": "SVT"
+    },
+    {
+      "name": "MN1",
+      "type": "NMOS",
+      "w": 2.43e-07,
+      "l": 0.05,
+      "nf": 1,
+      "vt": "SVT"
+    },
+    {
+      "name": "MN2",
+      "type": "NMOS",
+      "w": 2.43e-07,
+      "l": 0.05,
+      "nf": 1,
+      "vt": "SVT"
+    },
+    {
+      "name": "MN3",
+      "type": "NMOS",
+      "w": 2.43e-07,
+      "l": 0.05,
+      "nf": 1,
+      "vt": "SVT"
+    },
+    {
+      "name": "MP0",
+      "type": "PMOS",
+      "w": 1.08e-07,
+      "l": 0.05,
+      "nf": 1,
+      "vt": "SVT"
+    },
+    {
+      "name": "MP1",
+      "type": "PMOS",
+      "w": 1.08e-07,
+      "l": 0.05,
+      "nf": 1,
+      "vt": "SVT"
+    },
+    {
+      "name": "MP2",
+      "type": "PMOS",
+      "w": 2.43e-07,
+      "l": 0.05,
+      "nf": 1,
+      "vt": "SVT"
+    },
+    {
+      "name": "MP3",
+      "type": "PMOS",
+      "w": 2.43e-07,
+      "l": 0.05,
+      "nf": 1,
+      "vt": "SVT"
+    }
+  ],
+  "nets": [
+    [
+      "MN1.D",
+      "MN2.S",
+      "MN3.S",
+      "VSS"
+    ],
+    [
+      "MP0.S",
+      "MP1.D",
+      "MP2.S",
+      "MP3.S",
+      "VDD"
+    ]
+  ],
+  "constraints": {
+    "pair_map": {
+      "MN0": "MP0",
+      "MN1": "MP1",
+      "MN2": "MP2",
+      "MN3": "MP3",
+      "MP0": "MN0",
+      "MP1": "MN1",
+      "MP2": "MN2",
+      "MP3": "MN3"
+    },
+    "row_pitch": 1.0,
+    "poly_pitch": 0.056,
+    "y_pmos": 1.0,
+    "y_nmos": 0.0
+  }
+}

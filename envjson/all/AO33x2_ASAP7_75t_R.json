@@ -1,0 +1,111 @@
+{
+  "cell_name": "AO33x2_ASAP7_75t_R",
+  "devices": [
+    {
+      "W_norm": 1.0,
+      "poly_parity": 0,
+      "net_src": "VDD",
+      "net_drn": "Y",
+      "gate_net": "net020"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 1,
+      "net_src": "net15",
+      "net_drn": "net020",
+      "gate_net": "B3"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 0,
+      "net_src": "VDD",
+      "net_drn": "net15",
+      "gate_net": "A3"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 1,
+      "net_src": "VDD",
+      "net_drn": "net15",
+      "gate_net": "A2"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 0,
+      "net_src": "net15",
+      "net_drn": "net020",
+      "gate_net": "B2"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 1,
+      "net_src": "net15",
+      "net_drn": "net020",
+      "gate_net": "B1"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 0,
+      "net_src": "VDD",
+      "net_drn": "net15",
+      "gate_net": "A1"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 1,
+      "net_src": "VSS",
+      "net_drn": "Y",
+      "gate_net": "net020"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 0,
+      "net_src": "net39",
+      "net_drn": "net020",
+      "gate_net": "B1"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 1,
+      "net_src": "VSS",
+      "net_drn": "net022",
+      "gate_net": "B3"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 0,
+      "net_src": "net022",
+      "net_drn": "net39",
+      "gate_net": "B2"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 1,
+      "net_src": "net40",
+      "net_drn": "net020",
+      "gate_net": "A1"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 0,
+      "net_src": "VSS",
+      "net_drn": "net024",
+      "gate_net": "A3"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 1,
+      "net_src": "net024",
+      "net_drn": "net40",
+      "gate_net": "A2"
+    }
+  ],
+  "nets": [],
+  "constraints": {
+    "pair_map": {},
+    "row_pitch": 0.27,
+    "poly_pitch": 0.054,
+    "y_pmos": 1.0,
+    "y_nmos": 0.0
+  }
+}

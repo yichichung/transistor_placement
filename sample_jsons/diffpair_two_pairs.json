@@ -1,0 +1,97 @@
+{
+  "devices": [
+    {
+      "name": "MN1",
+      "type": "NMOS",
+      "w": 1.2,
+      "l": 0.06,
+      "nf": 2,
+      "vt": "SVT"
+    },
+    {
+      "name": "MP1",
+      "type": "PMOS",
+      "w": 1.6,
+      "l": 0.06,
+      "nf": 2,
+      "vt": "SVT"
+    },
+    {
+      "name": "MN2",
+      "type": "NMOS",
+      "w": 1.2,
+      "l": 0.06,
+      "nf": 2,
+      "vt": "SVT"
+    },
+    {
+      "name": "MP2",
+      "type": "PMOS",
+      "w": 1.6,
+      "l": 0.06,
+      "nf": 2,
+      "vt": "SVT"
+    }
+  ],
+  "nets": [
+    [
+      "MN1.G",
+      "INP"
+    ],
+    [
+      "MN2.G",
+      "INN"
+    ],
+    [
+      "MN1.D",
+      "OUTP"
+    ],
+    [
+      "MN2.D",
+      "OUTN"
+    ],
+    [
+      "MN1.S",
+      "VSS"
+    ],
+    [
+      "MN2.S",
+      "VSS"
+    ],
+    [
+      "MP1.S",
+      "VDD"
+    ],
+    [
+      "MP2.S",
+      "VDD"
+    ],
+    [
+      "MP1.G",
+      "BIAS"
+    ],
+    [
+      "MP2.G",
+      "BIAS"
+    ],
+    [
+      "MP1.D",
+      "OUTP"
+    ],
+    [
+      "MP2.D",
+      "OUTN"
+    ]
+  ],
+  "constraints": {
+    "pair_map": {
+      "MN1": "MP1",
+      "MP1": "MN1",
+      "MN2": "MP2",
+      "MP2": "MN2"
+    },
+    "row_pitch": 1.0,
+    "poly_pitch": 0.1,
+    "must_align_gates": true
+  }
+}

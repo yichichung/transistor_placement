@@ -1,0 +1,125 @@
+{
+  "cell_name": "DLLx3_ASAP7_75t_SL",
+  "devices": [
+    {
+      "W_norm": 1.0,
+      "poly_parity": 0,
+      "net_src": "VDD",
+      "net_drn": "Q",
+      "gate_net": "MH"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 1,
+      "net_src": "VDD",
+      "net_drn": "net30",
+      "gate_net": "MH"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 0,
+      "net_src": "VDD",
+      "net_drn": "pd2",
+      "gate_net": "net30"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 1,
+      "net_src": "pd2",
+      "net_drn": "MH",
+      "gate_net": "clkn"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 0,
+      "net_src": "VDD",
+      "net_drn": "clkb",
+      "gate_net": "clkn"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 1,
+      "net_src": "pu1",
+      "net_drn": "MH",
+      "gate_net": "clkb"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 0,
+      "net_src": "VDD",
+      "net_drn": "pu1",
+      "gate_net": "D"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 1,
+      "net_src": "VDD",
+      "net_drn": "clkn",
+      "gate_net": "CLK"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 0,
+      "net_src": "VSS",
+      "net_drn": "Q",
+      "gate_net": "MH"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 1,
+      "net_src": "VSS",
+      "net_drn": "net30",
+      "gate_net": "MH"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 0,
+      "net_src": "pd3",
+      "net_drn": "MH",
+      "gate_net": "clkb"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 1,
+      "net_src": "VSS",
+      "net_drn": "pd3",
+      "gate_net": "net30"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 0,
+      "net_src": "VSS",
+      "net_drn": "clkb",
+      "gate_net": "clkn"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 1,
+      "net_src": "VSS",
+      "net_drn": "pd1",
+      "gate_net": "D"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 0,
+      "net_src": "pd1",
+      "net_drn": "MH",
+      "gate_net": "clkn"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 1,
+      "net_src": "VSS",
+      "net_drn": "clkn",
+      "gate_net": "CLK"
+    }
+  ],
+  "nets": [],
+  "constraints": {
+    "pair_map": {},
+    "row_pitch": 0.27,
+    "poly_pitch": 0.054,
+    "y_pmos": 1.0,
+    "y_nmos": 0.0
+  }
+}

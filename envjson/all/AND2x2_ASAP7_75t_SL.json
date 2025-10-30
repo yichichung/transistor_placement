@@ -1,0 +1,55 @@
+{
+  "cell_name": "AND2x2_ASAP7_75t_SL",
+  "devices": [
+    {
+      "W_norm": 1.0,
+      "poly_parity": 0,
+      "net_src": "VDD",
+      "net_drn": "Y",
+      "gate_net": "net10"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 1,
+      "net_src": "VDD",
+      "net_drn": "net10",
+      "gate_net": "B"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 0,
+      "net_src": "VDD",
+      "net_drn": "net10",
+      "gate_net": "A"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 1,
+      "net_src": "VSS",
+      "net_drn": "Y",
+      "gate_net": "net10"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 0,
+      "net_src": "VSS",
+      "net_drn": "net20",
+      "gate_net": "A"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 1,
+      "net_src": "net20",
+      "net_drn": "net10",
+      "gate_net": "B"
+    }
+  ],
+  "nets": [],
+  "constraints": {
+    "pair_map": {},
+    "row_pitch": 0.27,
+    "poly_pitch": 0.054,
+    "y_pmos": 1.0,
+    "y_nmos": 0.0
+  }
+}

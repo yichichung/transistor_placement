@@ -1,0 +1,209 @@
+{
+  "devices": [
+    {
+      "name": "MN0",
+      "type": "NMOS",
+      "w": 1.0,
+      "l": 0.05,
+      "nf": 1,
+      "vt": "SVT"
+    },
+    {
+      "name": "MN1",
+      "type": "NMOS",
+      "w": 1.0,
+      "l": 0.05,
+      "nf": 1,
+      "vt": "SVT"
+    },
+    {
+      "name": "MN2",
+      "type": "NMOS",
+      "w": 1.0,
+      "l": 0.05,
+      "nf": 1,
+      "vt": "SVT"
+    },
+    {
+      "name": "MN3",
+      "type": "NMOS",
+      "w": 1.0,
+      "l": 0.05,
+      "nf": 1,
+      "vt": "SVT"
+    },
+    {
+      "name": "MN4",
+      "type": "NMOS",
+      "w": 1.0,
+      "l": 0.05,
+      "nf": 1,
+      "vt": "SVT"
+    },
+    {
+      "name": "MN5",
+      "type": "NMOS",
+      "w": 1.0,
+      "l": 0.05,
+      "nf": 1,
+      "vt": "SVT"
+    },
+    {
+      "name": "MP0",
+      "type": "PMOS",
+      "w": 1.0,
+      "l": 0.05,
+      "nf": 1,
+      "vt": "SVT"
+    },
+    {
+      "name": "MP1",
+      "type": "PMOS",
+      "w": 1.0,
+      "l": 0.05,
+      "nf": 1,
+      "vt": "SVT"
+    },
+    {
+      "name": "MP2",
+      "type": "PMOS",
+      "w": 1.0,
+      "l": 0.05,
+      "nf": 1,
+      "vt": "SVT"
+    },
+    {
+      "name": "MP3",
+      "type": "PMOS",
+      "w": 1.0,
+      "l": 0.05,
+      "nf": 1,
+      "vt": "SVT"
+    },
+    {
+      "name": "MP4",
+      "type": "PMOS",
+      "w": 1.0,
+      "l": 0.05,
+      "nf": 1,
+      "vt": "SVT"
+    },
+    {
+      "name": "MP5",
+      "type": "PMOS",
+      "w": 1.0,
+      "l": 0.05,
+      "nf": 1,
+      "vt": "SVT"
+    }
+  ],
+  "nets": [
+    [
+      "MN0.D",
+      "MP0.D",
+      "Y"
+    ],
+    [
+      "MN0.G",
+      "MN4.D",
+      "MP0.G",
+      "MP1.D",
+      "MP2.D",
+      "MP3.D",
+      "MP4.D",
+      "MP5.D",
+      "net14"
+    ],
+    [
+      "MN0.S",
+      "MN0.B",
+      "MN1.S",
+      "MN1.B",
+      "MN2.B",
+      "MN3.B",
+      "MN4.B",
+      "MN5.B",
+      "VSS"
+    ],
+    [
+      "MN1.D",
+      "MN2.S",
+      "net33"
+    ],
+    [
+      "MN1.G",
+      "MP1.G",
+      "E"
+    ],
+    [
+      "MN2.D",
+      "MN5.S",
+      "net34"
+    ],
+    [
+      "MN2.G",
+      "MP3.G",
+      "D"
+    ],
+    [
+      "MN3.D",
+      "MN4.S",
+      "net32"
+    ],
+    [
+      "MN3.G",
+      "MP2.G",
+      "B"
+    ],
+    [
+      "MN3.S",
+      "MN5.D",
+      "net35"
+    ],
+    [
+      "MN4.G",
+      "MP5.G",
+      "A"
+    ],
+    [
+      "MN5.G",
+      "MP4.G",
+      "C"
+    ],
+    [
+      "MP0.S",
+      "MP0.B",
+      "MP1.S",
+      "MP1.B",
+      "MP2.S",
+      "MP2.B",
+      "MP3.S",
+      "MP3.B",
+      "MP4.S",
+      "MP4.B",
+      "MP5.S",
+      "MP5.B",
+      "VDD"
+    ]
+  ],
+  "constraints": {
+    "pair_map": {
+      "MN0": "MP0",
+      "MP0": "MN0",
+      "MN1": "MP1",
+      "MP1": "MN1",
+      "MN2": "MP3",
+      "MP3": "MN2",
+      "MN3": "MP2",
+      "MP2": "MN3",
+      "MN4": "MP5",
+      "MP5": "MN4",
+      "MN5": "MP4",
+      "MP4": "MN5"
+    },
+    "row_pitch": 0.27,
+    "poly_pitch": 0.054,
+    "y_pmos": 1.0,
+    "y_nmos": 0.0
+  }
+}

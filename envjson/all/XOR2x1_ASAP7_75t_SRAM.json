@@ -1,0 +1,83 @@
+{
+  "cell_name": "XOR2x1_ASAP7_75t_SRAM",
+  "devices": [
+    {
+      "W_norm": 1.0,
+      "poly_parity": 1,
+      "net_src": "net019",
+      "net_drn": "VDD",
+      "gate_net": "A"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 0,
+      "net_src": "net019",
+      "net_drn": "VDD",
+      "gate_net": "B"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 1,
+      "net_src": "Y",
+      "net_drn": "net019",
+      "gate_net": "net036"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 0,
+      "net_src": "net036",
+      "net_drn": "net048",
+      "gate_net": "B"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 1,
+      "net_src": "net048",
+      "net_drn": "VDD",
+      "gate_net": "A"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 0,
+      "net_src": "net047",
+      "net_drn": "VSS",
+      "gate_net": "A"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 1,
+      "net_src": "Y",
+      "net_drn": "net047",
+      "gate_net": "B"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 0,
+      "net_src": "Y",
+      "net_drn": "VSS",
+      "gate_net": "net036"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 1,
+      "net_src": "net036",
+      "net_drn": "VSS",
+      "gate_net": "A"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 0,
+      "net_src": "net036",
+      "net_drn": "VSS",
+      "gate_net": "B"
+    }
+  ],
+  "nets": [],
+  "constraints": {
+    "pair_map": {},
+    "row_pitch": 0.27,
+    "poly_pitch": 0.054,
+    "y_pmos": 1.0,
+    "y_nmos": 0.0
+  }
+}

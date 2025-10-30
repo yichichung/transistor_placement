@@ -1,0 +1,69 @@
+{
+  "cell_name": "OAI22xp33_ASAP7_75t_SRAM",
+  "devices": [
+    {
+      "W_norm": 1.0,
+      "poly_parity": 0,
+      "net_src": "VDD",
+      "net_drn": "net13",
+      "gate_net": "A1"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 1,
+      "net_src": "net13",
+      "net_drn": "Y",
+      "gate_net": "A2"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 0,
+      "net_src": "VDD",
+      "net_drn": "net14",
+      "gate_net": "B1"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 1,
+      "net_src": "net14",
+      "net_drn": "Y",
+      "gate_net": "B2"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 0,
+      "net_src": "VSS",
+      "net_drn": "net3",
+      "gate_net": "B2"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 1,
+      "net_src": "net3",
+      "net_drn": "Y",
+      "gate_net": "A2"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 0,
+      "net_src": "VSS",
+      "net_drn": "net3",
+      "gate_net": "B1"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 1,
+      "net_src": "net3",
+      "net_drn": "Y",
+      "gate_net": "A1"
+    }
+  ],
+  "nets": [],
+  "constraints": {
+    "pair_map": {},
+    "row_pitch": 0.27,
+    "poly_pitch": 0.054,
+    "y_pmos": 1.0,
+    "y_nmos": 0.0
+  }
+}

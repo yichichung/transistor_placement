@@ -1,0 +1,111 @@
+{
+  "cell_name": "CKINVDCx10_ASAP7_75t_SL",
+  "devices": [
+    {
+      "W_norm": 1.0,
+      "poly_parity": 1,
+      "net_src": "VDD",
+      "net_drn": "net063",
+      "gate_net": "net063"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 0,
+      "net_src": "VDD",
+      "net_drn": "net063",
+      "gate_net": "net067"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 1,
+      "net_src": "VDD",
+      "net_drn": "net061",
+      "gate_net": "net061"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 0,
+      "net_src": "VDD",
+      "net_drn": "net061",
+      "gate_net": "net066"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 1,
+      "net_src": "VDD",
+      "net_drn": "net029",
+      "gate_net": "net029"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 0,
+      "net_src": "VDD",
+      "net_drn": "net029",
+      "gate_net": "net030"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 1,
+      "net_src": "VDD",
+      "net_drn": "Y",
+      "gate_net": "A"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 0,
+      "net_src": "VSS",
+      "net_drn": "net067",
+      "gate_net": "net063"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 1,
+      "net_src": "VSS",
+      "net_drn": "net067",
+      "gate_net": "net067"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 0,
+      "net_src": "VSS",
+      "net_drn": "net066",
+      "gate_net": "net061"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 1,
+      "net_src": "VSS",
+      "net_drn": "net066",
+      "gate_net": "net066"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 0,
+      "net_src": "VSS",
+      "net_drn": "Y",
+      "gate_net": "A"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 1,
+      "net_src": "VSS",
+      "net_drn": "net030",
+      "gate_net": "net030"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 0,
+      "net_src": "VSS",
+      "net_drn": "net030",
+      "gate_net": "net029"
+    }
+  ],
+  "nets": [],
+  "constraints": {
+    "pair_map": {},
+    "row_pitch": 0.27,
+    "poly_pitch": 0.054,
+    "y_pmos": 1.0,
+    "y_nmos": 0.0
+  }
+}

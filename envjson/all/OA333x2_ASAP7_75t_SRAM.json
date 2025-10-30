@@ -1,0 +1,153 @@
+{
+  "cell_name": "OA333x2_ASAP7_75t_SRAM",
+  "devices": [
+    {
+      "W_norm": 1.0,
+      "poly_parity": 0,
+      "net_src": "Y",
+      "net_drn": "VDD",
+      "gate_net": "net020"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 1,
+      "net_src": "net040",
+      "net_drn": "VDD",
+      "gate_net": "C3"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 0,
+      "net_src": "net020",
+      "net_drn": "net084",
+      "gate_net": "A1"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 1,
+      "net_src": "net086",
+      "net_drn": "net040",
+      "gate_net": "C2"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 0,
+      "net_src": "net020",
+      "net_drn": "net087",
+      "gate_net": "B1"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 1,
+      "net_src": "net087",
+      "net_drn": "net041",
+      "gate_net": "B2"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 0,
+      "net_src": "net020",
+      "net_drn": "net086",
+      "gate_net": "C1"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 1,
+      "net_src": "net038",
+      "net_drn": "VDD",
+      "gate_net": "A3"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 0,
+      "net_src": "net041",
+      "net_drn": "VDD",
+      "gate_net": "B3"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 1,
+      "net_src": "net084",
+      "net_drn": "net038",
+      "gate_net": "A2"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 0,
+      "net_src": "Y",
+      "net_drn": "VSS",
+      "gate_net": "net020"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 1,
+      "net_src": "net015",
+      "net_drn": "net068",
+      "gate_net": "B3"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 0,
+      "net_src": "net020",
+      "net_drn": "net015",
+      "gate_net": "A1"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 1,
+      "net_src": "net068",
+      "net_drn": "VSS",
+      "gate_net": "C2"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 0,
+      "net_src": "net068",
+      "net_drn": "VSS",
+      "gate_net": "C1"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 1,
+      "net_src": "net015",
+      "net_drn": "net068",
+      "gate_net": "B1"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 0,
+      "net_src": "net068",
+      "net_drn": "VSS",
+      "gate_net": "C3"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 1,
+      "net_src": "net020",
+      "net_drn": "net015",
+      "gate_net": "A3"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 0,
+      "net_src": "net015",
+      "net_drn": "net068",
+      "gate_net": "B2"
+    },
+    {
+      "W_norm": 1.0,
+      "poly_parity": 1,
+      "net_src": "net020",
+      "net_drn": "net015",
+      "gate_net": "A2"
+    }
+  ],
+  "nets": [],
+  "constraints": {
+    "pair_map": {},
+    "row_pitch": 0.27,
+    "poly_pitch": 0.054,
+    "y_pmos": 1.0,
+    "y_nmos": 0.0
+  }
+}
