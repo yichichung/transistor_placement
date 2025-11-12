@@ -1,7 +1,10 @@
 """
 Transistor Placement using GNN + Transformer + PPO (SB3)
-COMPLETE FIX: Multi-cell training, proper rewards, progress bars, CSV output
-Priority: Breaks → Dummy → Shared → HPWL
+COMPLETE FIX:
+- Intelligent gate-based pairing
+- Proper diffusion break detection with S/D mirroring
+- Fixed N_max dimension handling
+- TensorBoard + Multi-cell training
 """
 from __future__ import annotations
 import json
@@ -10,8 +13,7 @@ import pathlib
 import csv
 import math
 import random
-import glob
-from typing import Optional, Tuple, Dict, List, Any
+from typing import Optional, Tuple, Dict, List, Any, Union
 from collections import defaultdict
 from dataclasses import dataclass
 
@@ -33,12 +35,11 @@ from tqdm.auto import tqdm
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 GNN_output_dim = 128
-
-###############################################################################
-# 1. ASAP7 Dataset Parser (FIXED)
-###############################################################################
-
 MOS_TYPES = ["NMOS", "PMOS"]
+
+###############################################################################
+# 1. Data Structures and Parsing
+###############################################################################
 
 
 @dataclass
@@ -54,120 +55,11 @@ class TransistorNode:
     is_pin: bool = False
 
 
-def parse_asap7_cell(asap7_json: pathlib.Path, cell_name: str,
-                     poly_pitch: float = 0.056, row_pitch: float = 1.0) -> dict:
-    """Parse ASAP7 dataset format and convert to training format"""
-    with open(asap7_json, "r") as f:
-        data = json.load(f)
-
-    if cell_name not in data:
-        available = list(data.keys())[:10]
-        raise ValueError(
-            f"Cell '{cell_name}' not found. Available (first 10): {available}")
-
-    cell = data[cell_name]
-    row_P = cell.get("row_P", [])
-    row_N = cell.get("row_N", [])
-    prefix = cell.get("prefix", {})
-
-    if prefix.get("poly_pitch") is not None:
-        poly_pitch = float(prefix["poly_pitch"])
-
-    devices = []
-    name_map_N, name_map_P = {}, {}
-
-    for i, t in enumerate(row_N):
-        name = f"MN{i}"
-        name_map_N[i] = name
-        devices.append({
-            "name": name,
-            "type": "NMOS",
-            "w": float(t.get("W_norm", 1e-7)),
-            "l": 0.05,
-            "nf": 1,
-            "vt": "SVT"
-        })
-
-    for i, t in enumerate(row_P):
-        name = f"MP{i}"
-        name_map_P[i] = name
-        devices.append({
-            "name": name,
-            "type": "PMOS",
-            "w": float(t.get("W_norm", 1e-7)),
-            "l": 0.05,
-            "nf": 1,
-            "vt": "SVT"
-        })
-
-    net2pins = defaultdict(list)
-
-    def add_connection(dev: str, pin: str, net_name: str):
-        if net_name:
-            net2pins[net_name].append(f"{dev}.{pin}")
-
-    for i, t in enumerate(row_N):
-        nname = name_map_N[i]
-        add_connection(nname, "D", t.get("net_drn"))
-        add_connection(nname, "S", t.get("net_src"))
-        add_connection(nname, "G", t.get("gate_net"))
-
-    for i, t in enumerate(row_P):
-        pname = name_map_P[i]
-        add_connection(pname, "D", t.get("net_drn"))
-        add_connection(pname, "S", t.get("net_src"))
-        add_connection(pname, "G", t.get("gate_net"))
-
-    nets = []
-    for netname, pins in net2pins.items():
-        if len(pins) >= 1:
-            nets.append(pins + [netname])
-
-    if len(nets) == 0:
-        gate_groups = defaultdict(list)
-        for i, t in enumerate(row_N):
-            gate = t.get("gate_net")
-            if gate:
-                gate_groups[gate].append(f"MN{i}")
-        for i, t in enumerate(row_P):
-            gate = t.get("gate_net")
-            if gate:
-                gate_groups[gate].append(f"MP{i}")
-
-        for gate_name, dev_names in gate_groups.items():
-            if len(dev_names) >= 1:
-                pins = [f"{dev}.G" for dev in dev_names]
-                nets.append(pins + [gate_name])
-
-    pair_map = {}
-    M = min(len(row_N), len(row_P))
-    for i in range(M):
-        pair_map[name_map_N[i]] = name_map_P[i]
-
-    reverse_pair = {v: k for k, v in pair_map.items()}
-    pair_map.update(reverse_pair)
-
-    constraints = {
-        "pair_map": pair_map,
-        "row_pitch": float(row_pitch),
-        "poly_pitch": float(poly_pitch),
-        "y_pmos": 1.0,
-        "y_nmos": 0.0
-    }
-
-    return {
-        "devices": devices,
-        "nets": nets,
-        "constraints": constraints
-    }
-
-
-def build_graph_from_nets(devices: List[dict], nets: List[List[str]], allow_power: bool = True):
-    """Build adjacency matrix from nets using clique expansion"""
+def build_graph_from_nets(devices: List[dict], nets: List[List[str]]) -> torch.Tensor:
+    """Build adjacency matrix using clique expansion"""
     name_to_idx = {d["name"]: i for i, d in enumerate(devices)}
     N = len(devices)
     adj_matrix = np.zeros((N, N), dtype=np.float32)
-    edges = set()
 
     def pin_to_dev(pin: str) -> Optional[int]:
         if not isinstance(pin, str) or "." not in pin:
@@ -175,21 +67,10 @@ def build_graph_from_nets(devices: List[dict], nets: List[List[str]], allow_powe
         dev_name = pin.split(".")[0]
         return name_to_idx.get(dev_name, None)
 
-    nets_processed = 0
-    edges_added = 0
-
-    for net_idx, net in enumerate(nets):
+    for net in nets:
         pins = [p for p in net[:-1] if isinstance(p, str) and "." in p]
         if not pins:
             continue
-
-        if not allow_power:
-            net_name = net[-1] if len(net) > 0 else ""
-            if net_name.upper() in ["VDD", "VSS", "VDDX", "VSSX"]:
-                power_pins = sum(1 for p in pins if any(
-                    x in p.upper() for x in ["VDD", "VSS"]))
-                if power_pins == len(pins):
-                    continue
 
         dev_indices = []
         for pin in pins:
@@ -198,19 +79,15 @@ def build_graph_from_nets(devices: List[dict], nets: List[List[str]], allow_powe
                 dev_indices.append(idx)
 
         dev_indices = sorted(set(dev_indices))
-
         if len(dev_indices) < 2:
             continue
 
-        nets_processed += 1
         for i in range(len(dev_indices)):
             for j in range(i + 1, len(dev_indices)):
                 u, v = dev_indices[i], dev_indices[j]
                 if u != v:
-                    edges.add((min(u, v), max(u, v)))
                     adj_matrix[u, v] = 1.0
                     adj_matrix[v, u] = 1.0
-                    edges_added += 1
 
     for i in range(N):
         adj_matrix[i, i] = 1.0
@@ -218,14 +95,13 @@ def build_graph_from_nets(devices: List[dict], nets: List[List[str]], allow_powe
     row_sums = adj_matrix.sum(axis=1, keepdims=True)
     adj_matrix = adj_matrix / (row_sums + 1e-8)
 
-    adj = torch.tensor(adj_matrix, dtype=torch.float32)
-    edge_list = sorted(list(edges))
-
-    return adj, edge_list
+    return torch.tensor(adj_matrix, dtype=torch.float32)
 
 
-def parse_transistor_json(path: pathlib.Path, verbose: bool = False) -> dict:
-    """Parse environment JSON"""
+def parse_transistor_json(path: Union[str, pathlib.Path], verbose: bool = False) -> dict:
+    """Parse environment JSON with pin-to-net mapping"""
+    path = pathlib.Path(path)
+
     with open(path, "r") as f:
         data = json.load(f)
 
@@ -247,7 +123,31 @@ def parse_transistor_json(path: pathlib.Path, verbose: bool = False) -> dict:
             is_pin=False
         ))
 
-    adj, edge_list = build_graph_from_nets(devices, nets, allow_power=True)
+    adj = build_graph_from_nets(devices, nets)
+
+    pin_nets = {i: {"S": None, "D": None, "G": None}
+                for i in range(len(devices))}
+
+    def set_pin(dev_name: str, pin_letter: str, net_name: str):
+        if not dev_name or not pin_letter or not net_name:
+            return
+        idx = name2idx.get(dev_name)
+        if idx is None:
+            return
+        p = pin_letter.upper()
+        if p in ("S", "D", "G"):
+            pin_nets[idx][p] = net_name
+
+    for net in nets:
+        if not net:
+            continue
+        net_name = net[-1] if isinstance(net[-1], str) else None
+        for token in net[:-1]:
+            if isinstance(token, str) and "." in token:
+                parts = token.split(".", 1)
+                if len(parts) == 2:
+                    dev, pin = parts
+                    set_pin(dev, pin, net_name)
 
     net_pin_indices = []
     for net in nets:
@@ -279,9 +179,7 @@ def parse_transistor_json(path: pathlib.Path, verbose: bool = False) -> dict:
         X.append(feat)
 
     X = np.asarray(X, dtype=np.float32)
-
     pair_map = constraints.get("pair_map", {})
-
     grid = {
         "row_pitch": float(constraints.get("row_pitch", 1.0)),
         "poly_pitch": float(constraints.get("poly_pitch", 0.056)),
@@ -289,12 +187,10 @@ def parse_transistor_json(path: pathlib.Path, verbose: bool = False) -> dict:
         "y_nmos": float(constraints.get("y_nmos", 0.0))
     }
 
-    num_edges = len(edge_list)
-    avg_degree = (2 * num_edges) / max(N, 1)
-
     if verbose:
+        num_edges = int((adj.sum().item() - N) / 2)
         print(
-            f"[Graph] Nodes={N}, Nets={len(net_pin_indices)}, Edges={num_edges}, AvgDeg={avg_degree:.2f}")
+            f"[Graph] Nodes={N}, Nets={len(net_pin_indices)}, Edges={num_edges}")
 
     return {
         "devices": devices,
@@ -307,7 +203,8 @@ def parse_transistor_json(path: pathlib.Path, verbose: bool = False) -> dict:
         "name2idx": name2idx,
         "grid": grid,
         "num_cells": N,
-        "cell_name": path.stem
+        "cell_name": path.stem,
+        "pin_nets": pin_nets,
     }
 
 ###############################################################################
@@ -517,7 +414,7 @@ class ValueNetwork(nn.Module):
         return self.value_net(state_embedding).squeeze(-1)
 
 ###############################################################################
-# 5. Multi-Cell Environment (FIXED with proper rewards)
+# 5. Environment
 ###############################################################################
 
 
@@ -531,19 +428,25 @@ class TransistorPlacementEnv(gym.Env):
         self.reward_cfg = reward_cfg
 
         self.observation_space = gym.spaces.Box(
-            low=-1, high=self.N, shape=(self.N,), dtype=np.float32
+            low=-1, high=self.N_max, shape=(self.N_max,), dtype=np.float32
         )
-        self.action_space = gym.spaces.Discrete(self.N)
+        self.action_space = gym.spaces.Discrete(self.N_max)
 
     def _rebuild_from_dict(self, graph_data: Dict):
-        """Rebuild environment from graph data"""
         self.graph = graph_data
         self.nodes: List[TransistorNode] = graph_data["nodes"]
         self.N = len(self.nodes)
+
+        if not hasattr(self, "N_max"):
+            self.N_max = self.N
+
         self.devices = graph_data["devices"]
         self.pair_map = graph_data["pair_map"]
         self.grid = graph_data["grid"]
         self.netlist = graph_data["netlist"]
+        self.pin_nets = graph_data.get("pin_nets", {})
+
+        self._normalize_pair_map()
 
         self.col_idx = 0
         self.pmos_cols = []
@@ -551,14 +454,39 @@ class TransistorPlacementEnv(gym.Env):
         self.placed = np.zeros(self.N, dtype=np.int32)
         self.positions = {}
         self.sequence = []
-
-        self.cur_episode_metrics = {}
         self.episode_steps = 0
         self._last_metrics = None
-        self.last_reward = 0.0
         self.current_placement = []
 
+    def _normalize_pair_map(self):
+        name2idx = self.graph["name2idx"]
+        clean = {}
+        seen = set()
+
+        for a, b in self.pair_map.items():
+            if a not in name2idx or b not in name2idx:
+                continue
+            ia, ib = name2idx[a], name2idx[b]
+            if ia >= len(self.devices) or ib >= len(self.devices):
+                continue
+            ta, tb = self.devices[ia]["type"], self.devices[ib]["type"]
+
+            if {ta, tb} != {"NMOS", "PMOS"}:
+                continue
+
+            key = tuple(sorted([a, b]))
+            if key in seen:
+                continue
+            seen.add(key)
+
+            clean[a] = b
+            clean[b] = a
+
+        self.pair_map = clean
+
     def _pair_of(self, idx: int) -> Optional[int]:
+        if idx >= len(self.devices):
+            return None
         name = self.devices[idx]["name"]
         peer_name = self.pair_map.get(name)
         if peer_name is None:
@@ -568,15 +496,36 @@ class TransistorPlacementEnv(gym.Env):
     def _can_share(self, a_idx: Optional[int], b_idx: Optional[int], row_type: str) -> bool:
         if a_idx is None or b_idx is None:
             return False
+        if a_idx >= len(self.devices) or b_idx >= len(self.devices):
+            return False
+
         a = self.devices[a_idx]
         b = self.devices[b_idx]
+
         if a["type"] != row_type or b["type"] != row_type:
             return False
-        return True
+
+        pa = self.pin_nets.get(a_idx, {})
+        pb = self.pin_nets.get(b_idx, {})
+        aS, aD = pa.get("S"), pa.get("D")
+        bS, bD = pb.get("S"), pb.get("D")
+
+        for x in (aS, aD):
+            for y in (bS, bD):
+                if x and y and x == y:
+                    return True
+        return False
 
     def _shared_amount(self, a_idx: Optional[int], b_idx: Optional[int]) -> float:
         if a_idx is None or b_idx is None:
             return 0.0
+        if a_idx >= len(self.devices) or b_idx >= len(self.devices):
+            return 0.0
+
+        row_type = self.devices[a_idx]["type"]
+        if not self._can_share(a_idx, b_idx, row_type):
+            return 0.0
+
         a = self.devices[a_idx]
         b = self.devices[b_idx]
         return float(min(a.get("nf", 1), b.get("nf", 1)))
@@ -624,15 +573,20 @@ class TransistorPlacementEnv(gym.Env):
         name2idx = self.graph["name2idx"]
         total = 0.0
         count = 0
+
+        processed = set()
         for p_name, n_name in self.pair_map.items():
+            pair_key = tuple(sorted([p_name, n_name]))
+            if pair_key in processed:
+                continue
+            processed.add(pair_key)
+
             if p_name in name2idx and n_name in name2idx:
                 p_idx = name2idx[p_name]
                 n_idx = name2idx[n_name]
                 if p_idx in self.positions and n_idx in self.positions:
-                    p_col = self.positions[p_idx][4] if len(
-                        self.positions[p_idx]) > 4 else None
-                    n_col = self.positions[n_idx][4] if len(
-                        self.positions[n_idx]) > 4 else None
+                    p_col = self.positions[p_idx][4]
+                    n_col = self.positions[n_idx][4]
                     if isinstance(p_col, int) and isinstance(n_col, int):
                         total += abs(p_col - n_col)
                         count += 1
@@ -655,14 +609,12 @@ class TransistorPlacementEnv(gym.Env):
         }
 
     def get_action_mask(self) -> np.ndarray:
-        mask = np.ones(self.N, dtype=np.float32)
-        for i in range(self.N):
-            if self.placed[i] == 1:
-                mask[i] = 0.0
+        mask = np.zeros(self.N_max, dtype=np.float32)
+        mask[:self.N] = 1.0
+        mask[:self.N][self.placed == 1] = 0.0
         return mask
 
     def get_current_placement_dicts(self) -> List[Dict]:
-        """Get current placement as list of dicts for CSV export"""
         placement = []
         for idx, pos in self.positions.items():
             if idx >= len(self.devices):
@@ -699,11 +651,9 @@ class TransistorPlacementEnv(gym.Env):
         self.positions = {}
         self.sequence = []
         self.episode_steps = 0
-        self.cur_episode_metrics = {}
         self._last_metrics = None
-        self.last_reward = 0.0
 
-        obs = np.zeros(self.N, dtype=np.float32)
+        obs = np.zeros(self.N_max, dtype=np.float32)
         info = {"mask": self.get_action_mask()}
         return obs, info
 
@@ -711,17 +661,14 @@ class TransistorPlacementEnv(gym.Env):
         done = False
         info = {}
 
-        if not (0 <= action < self.N):
-            obs = np.zeros(self.N, dtype=np.float32)
-            return obs, -10.0, False, False, {"invalid_action": True}
-
-        if self.placed[action] == 1:
-            obs = np.zeros(self.N, dtype=np.float32)
+        if not (0 <= action < self.N) or self.placed[action] == 1:
+            obs = np.zeros(self.N_max, dtype=np.float32)
             for i, idx in enumerate(self.sequence):
-                obs[idx] = float(i + 1)
+                if idx < self.N_max:
+                    obs[idx] = float(i + 1)
             info["invalid_action"] = True
             info["mask"] = self.get_action_mask()
-            return obs, -5.0, False, False, info
+            return obs, -1.0, False, False, info
 
         def _place_to_col(idx: int, row_type: str, col: int):
             x = self.grid["poly_pitch"] * col
@@ -749,10 +696,10 @@ class TransistorPlacementEnv(gym.Env):
             peer_idx = self.graph["name2idx"].get(peer_name)
             if peer_idx is not None and self.placed[peer_idx] == 0:
                 peer_row = self.devices[peer_idx]["type"]
-                if peer_row == "PMOS":
+                if peer_row == "PMOS" and self.pmos_cols[self.col_idx] is None:
                     self.pmos_cols[self.col_idx] = peer_idx
                     _place_to_col(peer_idx, "PMOS", self.col_idx)
-                else:
+                elif peer_row == "NMOS" and self.nmos_cols[self.col_idx] is None:
                     self.nmos_cols[self.col_idx] = peer_idx
                     _place_to_col(peer_idx, "NMOS", self.col_idx)
 
@@ -765,9 +712,7 @@ class TransistorPlacementEnv(gym.Env):
         else:
             delta = {k: cur[k] - self._last_metrics[k] for k in cur.keys()}
         self._last_metrics = cur
-        self.cur_episode_metrics[self.episode_steps] = cur
 
-        # Priority: Breaks >> Dummy >> Shared >> HPWL
         w_break = float(self.reward_cfg.get("w_break", 100.0))
         w_dummy = float(self.reward_cfg.get("w_dummy", 50.0))
         w_share = float(self.reward_cfg.get("w_share", 10.0))
@@ -785,7 +730,6 @@ class TransistorPlacementEnv(gym.Env):
         done = bool(np.all(self.placed == 1))
         if done:
             final = cur
-            # Final bonus/penalty
             reward += (
                 -w_break * final["breaks"] +
                 -w_dummy * final["dummy"] +
@@ -796,52 +740,59 @@ class TransistorPlacementEnv(gym.Env):
             info["final_metrics"] = final
             info["episode_steps"] = self.episode_steps
             self.current_placement = self.get_current_placement_dicts()
-            self.last_reward = reward
+            print(f"[Done] Steps={self.episode_steps} | Breaks={final['breaks']} | "
+                  f"Dummy={final['dummy']} | Shared={final['shared']:.1f} | "
+                  f"HPWL={final['hpwl']:.3f} | ColDist={final['col_dist']:.2f}")
 
-        obs = np.zeros(self.N, dtype=np.float32)
+        obs = np.zeros(self.N_max, dtype=np.float32)
         for i, idx in enumerate(self.sequence):
-            obs[idx] = float(i + 1)
-
+            if idx < self.N_max:
+                obs[idx] = float(i + 1)
         info["mask"] = self.get_action_mask()
         return obs, float(reward), bool(done), False, info
 
 
 class RandomMultiCellEnv(TransistorPlacementEnv):
-    """Environment that randomly selects a cell for each episode"""
-
-    def __init__(self, env_files: List[pathlib.Path], reward_cfg: Dict, device=None):
+    def __init__(self, env_files: List[Union[str, pathlib.Path]], reward_cfg: Dict, device=None):
         self.env_files = [pathlib.Path(p) for p in env_files]
         self.reward_cfg = reward_cfg
         self.device_tensor = device or torch.device("cpu")
 
-        # Load first cell to initialize
-        first_data = parse_transistor_json(self.env_files[0], verbose=False)
-        super().__init__(first_data, reward_cfg, device)
+        self._graphs = {}
+        Ns = []
+        for p in self.env_files:
+            g = parse_transistor_json(p, verbose=False)
+            self._graphs[str(p)] = g
+            Ns.append(len(g["devices"]))
+        self.N_max = int(max(Ns))
 
-        print(f"[Multi-Cell] Loaded {len(self.env_files)} cells for training")
+        first_data = self._graphs[str(self.env_files[0])]
+        super().__init__(first_data, reward_cfg, device)
+        self.N_max = int(self.N_max)
+
+        self.observation_space = gym.spaces.Box(
+            low=-1, high=self.N_max, shape=(self.N_max,), dtype=np.float32)
+        self.action_space = gym.spaces.Discrete(self.N_max)
+
+        print(
+            f"[Multi-Cell] Loaded {len(self.env_files)} cells (N_max={self.N_max})")
         for f in self.env_files[:5]:
             print(f"  - {f.stem}")
         if len(self.env_files) > 5:
             print(f"  ... and {len(self.env_files) - 5} more")
 
     def reset(self, *, seed=None, options=None):
-        # Randomly select a cell
         selected_file = random.choice(self.env_files)
-        graph_data = parse_transistor_json(selected_file, verbose=False)
+        graph_data = self._graphs.get(str(selected_file))
+        if graph_data is None:
+            graph_data = parse_transistor_json(selected_file, verbose=False)
+            self._graphs[str(selected_file)] = graph_data
 
-        # Rebuild environment with new cell
         self._rebuild_from_dict(graph_data)
-
-        # Reset action/observation spaces for new size
-        self.observation_space = gym.spaces.Box(
-            low=-1, high=self.N, shape=(self.N,), dtype=np.float32
-        )
-        self.action_space = gym.spaces.Discrete(self.N)
-
         return super().reset(seed=seed, options=options)
 
 ###############################################################################
-# 6. SB3 Policy Integration (FIXED)
+# 6. SB3 Policy Integration
 ###############################################################################
 
 
@@ -920,11 +871,25 @@ class TransistorPolicySB3(ActorCriticPolicy):
                 next_cols=next_cols
             )
 
-            mask = torch.ones_like(scores, dtype=torch.bool)
-            for idx in range(self.env_ref.N):
+            N = self.env_ref.N
+            N_max = self.env_ref.N_max
+
+            mask = torch.ones(N, dtype=torch.bool, device=scores.device)
+            for idx in range(N):
                 if self.env_ref.placed[idx] == 1:
                     mask[idx] = False
-            scores = scores.masked_fill(~mask, -1e9)
+
+            if scores.numel() < N_max:
+                scores = torch.cat([
+                    scores,
+                    torch.full((N_max - scores.numel(),), -1e9,
+                               device=scores.device, dtype=scores.dtype)
+                ], dim=0)
+
+            full_mask = torch.zeros(
+                N_max, dtype=torch.bool, device=scores.device)
+            full_mask[:N] = mask
+            scores = scores.masked_fill(~full_mask, -1e9)
 
             dist = torch.distributions.Categorical(logits=scores)
             action = dist.probs.argmax(
@@ -967,11 +932,25 @@ class TransistorPolicySB3(ActorCriticPolicy):
                 next_cols=next_cols
             )
 
-            mask = torch.ones_like(scores, dtype=torch.bool)
-            for idx in range(self.env_ref.N):
+            N = self.env_ref.N
+            N_max = self.env_ref.N_max
+
+            mask = torch.ones(N, dtype=torch.bool, device=scores.device)
+            for idx in range(N):
                 if self.env_ref.placed[idx] == 1:
                     mask[idx] = False
-            scores = scores.masked_fill(~mask, -1e9)
+
+            if scores.numel() < N_max:
+                scores = torch.cat([
+                    scores,
+                    torch.full((N_max - scores.numel(),), -1e9,
+                               device=scores.device, dtype=scores.dtype)
+                ], dim=0)
+
+            full_mask = torch.zeros(
+                N_max, dtype=torch.bool, device=scores.device)
+            full_mask[:N] = mask
+            scores = scores.masked_fill(~full_mask, -1e9)
 
             dist = torch.distributions.Categorical(logits=scores)
             log_probs.append(dist.log_prob(actions[i]))
@@ -995,13 +974,11 @@ class TransistorPolicySB3(ActorCriticPolicy):
             return torch.stack(vals)
 
 ###############################################################################
-# 7. Callbacks (TQDM + Best Placement)
+# 7. Callbacks
 ###############################################################################
 
 
 class TqdmCallback(BaseCallback):
-    """Progress bar with metrics display"""
-
     def __init__(self, total_timesteps: int, verbose: int = 0):
         super().__init__(verbose)
         self.total = total_timesteps
@@ -1014,8 +991,9 @@ class TqdmCallback(BaseCallback):
     def _on_step(self) -> bool:
         current = self.num_timesteps
         delta = current - self._last_update
-        self.pbar.update(delta)
-        self._last_update = current
+        if self.pbar and delta > 0:
+            self.pbar.update(delta)
+            self._last_update = current
         return True
 
     def _on_training_end(self) -> None:
@@ -1024,8 +1002,6 @@ class TqdmCallback(BaseCallback):
 
 
 class BestPlacementCallback(BaseCallback):
-    """Save best placement to CSV"""
-
     def __init__(self, env, csv_path: pathlib.Path, verbose: int = 1):
         super().__init__(verbose)
         self.env = env
@@ -1034,12 +1010,10 @@ class BestPlacementCallback(BaseCallback):
         self.best_dummy = float('inf')
         self.best_shared = 0.0
         self.best_hpwl = float('inf')
-        self.best_score = -float('inf')
         self.header_written = False
         self.episode_count = 0
 
     def _on_training_start(self) -> None:
-        """Write initial placement"""
         try:
             env_single = self.env.envs[0]
             placement = env_single.get_current_placement_dicts()
@@ -1047,7 +1021,7 @@ class BestPlacementCallback(BaseCallback):
                 self._write_csv(placement)
         except Exception as e:
             if self.verbose:
-                print(f"[Warning] Could not write initial placement: {e}")
+                print(f"[Warning] Initial placement write failed: {e}")
 
     def _on_step(self) -> bool:
         try:
@@ -1070,7 +1044,13 @@ class BestPlacementCallback(BaseCallback):
             hpwl = metrics["hpwl"]
             col_dist = metrics.get("col_dist", 0.0)
 
-            # Priority: Breaks > Dummy > Shared > HPWL
+            if hasattr(self.model, 'logger') and self.model.logger:
+                self.model.logger.record("placement/breaks", breaks)
+                self.model.logger.record("placement/dummy", dummy)
+                self.model.logger.record("placement/shared", shared)
+                self.model.logger.record("placement/hpwl", hpwl)
+                self.model.logger.record("placement/col_dist", col_dist)
+
             is_better = False
             if breaks < self.best_breaks:
                 is_better = True
@@ -1103,7 +1083,6 @@ class BestPlacementCallback(BaseCallback):
         return True
 
     def _on_training_end(self) -> None:
-        """Ensure at least one placement is written"""
         if not self.header_written:
             try:
                 env_single = self.env.envs[0]
@@ -1112,10 +1091,9 @@ class BestPlacementCallback(BaseCallback):
                     self._write_csv(placement)
             except Exception as e:
                 if self.verbose:
-                    print(f"[Warning] Could not write final placement: {e}")
+                    print(f"[Warning] Final placement write failed: {e}")
 
     def _write_csv(self, placement: List[Dict]):
-        """Write placement to CSV"""
         try:
             with open(self.csv_path, "w", newline="") as f:
                 fieldnames = ["device_name", "device_type", "row", "column",
@@ -1126,14 +1104,14 @@ class BestPlacementCallback(BaseCallback):
             self.header_written = True
         except Exception as e:
             if self.verbose:
-                print(f"[Error] Failed to write CSV: {e}")
+                print(f"[Error] CSV write failed: {e}")
 
 ###############################################################################
 # 8. Training Pipeline
 ###############################################################################
 
 
-def make_sb3_model(graph_data, reward_cfg, device, ppo_kwargs=None):
+def make_sb3_model(graph_data, reward_cfg, device, ppo_kwargs=None, tb_log=None):
     feature_dim = graph_data["features"].size(1)
     encoder = GNNEncoder(in_dim=feature_dim, out_dim=GNN_output_dim).to(device)
     policy_net = TransformerPolicy(embed_dim=GNN_output_dim).to(device)
@@ -1171,16 +1149,13 @@ def make_sb3_model(graph_data, reward_cfg, device, ppo_kwargs=None):
         ent_coef=ppo_kwargs.get("ent_coef", 0.02),
         vf_coef=ppo_kwargs.get("vf_coef", 0.5),
         max_grad_norm=ppo_kwargs.get("max_grad_norm", 0.5),
-        tensorboard_log=ppo_kwargs.get("tensorboard_log", None)
+        tensorboard_log=tb_log
     )
 
     return model, env, (encoder, policy_net, value_net)
 
 
-def make_multicell_model(env_files, reward_cfg, device, ppo_kwargs=None):
-    """Create model with multi-cell environment"""
-
-    # Load first cell to get feature dimensions
+def make_multicell_model(env_files, reward_cfg, device, ppo_kwargs=None, tb_log=None):
     first_data = parse_transistor_json(env_files[0], verbose=False)
     feature_dim = first_data["features"].size(1)
 
@@ -1220,7 +1195,7 @@ def make_multicell_model(env_files, reward_cfg, device, ppo_kwargs=None):
         ent_coef=ppo_kwargs.get("ent_coef", 0.02),
         vf_coef=ppo_kwargs.get("vf_coef", 0.5),
         max_grad_norm=ppo_kwargs.get("max_grad_norm", 0.5),
-        tensorboard_log=ppo_kwargs.get("tensorboard_log", None)
+        tensorboard_log=tb_log
     )
 
     return model, env, (encoder, policy_net, value_net)
@@ -1239,47 +1214,32 @@ def train_transistor_placement(
     print(f"Using device: {device_final}")
     if device_final.type == "cuda":
         print(f"  GPU: {torch.cuda.get_device_name(0)}")
-        print(f"  CUDA version: {torch.version.cuda}")
 
     if reward_cfg is None:
-        # Priority: Breaks >> Dummy >> Shared >> HPWL
         reward_cfg = {
-            "w_break": 100.0,   # Highest priority
-            "w_dummy": 50.0,    # Second priority
-            "w_share": 10.0,    # Third priority
-            "w_hpwl": 2.0,      # Fourth priority
+            "w_break": 100.0,
+            "w_dummy": 50.0,
+            "w_share": 10.0,
+            "w_hpwl": 2.0,
             "w_cdist": 5.0
         }
 
-    print(f"\n[Reward Weights] Priority: Breaks > Dummy > Shared > HPWL")
-    print(f"  Breaks: {reward_cfg['w_break']}")
-    print(f"  Dummy: {reward_cfg['w_dummy']}")
-    print(f"  Shared: {reward_cfg['w_share']}")
-    print(f"  HPWL: {reward_cfg['w_hpwl']}")
-    print(f"  ColDist: {reward_cfg['w_cdist']}")
+    print(f"\n[Reward Weights] Priority: Breaks > Dummy > Shared > HPWL > ColDist")
+    for k, v in reward_cfg.items():
+        print(f"  {k}: {v}")
 
     output_dir.mkdir(parents=True, exist_ok=True)
+    tb_log_dir = str(output_dir / "tensorboard")
 
-    # Setup tensorboard
-    if ppo_kwargs is None:
-        ppo_kwargs = {}
-    ppo_kwargs["tensorboard_log"] = str(output_dir / "tb")
-
-    # Multi-cell or single-cell mode
     if env_dir is not None:
         print(f"\n[Multi-Cell Mode] Loading cells from: {env_dir}")
-        env_files = sorted(glob.glob(str(env_dir / "*.json")))
+        env_files = sorted(list(env_dir.glob("*.json")))
         if len(env_files) == 0:
             raise ValueError(f"No JSON files found in {env_dir}")
 
         print(f"  Found {len(env_files)} cells")
-        for f in env_files[:5]:
-            print(f"    - {pathlib.Path(f).stem}")
-        if len(env_files) > 5:
-            print(f"    ... and {len(env_files) - 5} more")
-
         model, env, networks = make_multicell_model(
-            env_files, reward_cfg, device_final, ppo_kwargs)
+            env_files, reward_cfg, device_final, ppo_kwargs, tb_log_dir)
         output_name = "multi_cell"
     else:
         print(f"\n[Single-Cell Mode] Loading: {json_path}")
@@ -1288,7 +1248,7 @@ def train_transistor_placement(
         graph_data["adj"] = graph_data["adj"].to(device_final)
 
         model, env, networks = make_sb3_model(
-            graph_data, reward_cfg, device_final, ppo_kwargs)
+            graph_data, reward_cfg, device_final, ppo_kwargs, tb_log_dir)
         output_name = json_path.stem
 
     encoder, policy_net, value_net = networks
@@ -1299,6 +1259,7 @@ def train_transistor_placement(
     print(f"\n[Model] Total parameters: {total_params:,}")
 
     print(f"\n[Training] Starting {total_timesteps} timesteps...")
+    print(f"  TensorBoard: tensorboard --logdir {tb_log_dir}")
 
     best_csv = output_dir / f"{output_name}_best_placement.csv"
 
@@ -1310,7 +1271,8 @@ def train_transistor_placement(
     model.learn(
         total_timesteps=total_timesteps,
         callback=callbacks,
-        progress_bar=False  # We use our own TQDM
+        progress_bar=False,
+        tb_log_name=output_name
     )
 
     model_path = output_dir / f"{output_name}_model.pth"
@@ -1324,7 +1286,7 @@ def train_transistor_placement(
     print(f"\n[Complete]")
     print(f"  Model: {model_path}")
     print(f"  Best placement: {best_csv}")
-    print(f"  TensorBoard: tensorboard --logdir {output_dir / 'tb'}")
+    print(f"  TensorBoard: tensorboard --logdir {tb_log_dir}")
 
     return model, env
 
@@ -1335,82 +1297,32 @@ def train_transistor_placement(
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Transistor Placement: GNN + Transformer + PPO (Multi-cell support)"
+        description="Transistor Placement: GNN + Transformer + PPO"
     )
     parser.add_argument("--input-file", type=pathlib.Path, default=None,
                         help="Single cell JSON file")
     parser.add_argument("--env-dir", type=pathlib.Path, default=None,
-                        help="Directory with multiple cell JSONs (for multi-cell training)")
-    parser.add_argument("--asap7-mode", action="store_true",
-                        help="Parse from ASAP7 dataset format")
-    parser.add_argument("--cell-name", type=str, default=None,
-                        help="Cell name to extract (required for ASAP7 mode)")
+                        help="Directory with multiple cell JSONs")
     parser.add_argument("--timesteps", type=int, default=100_000,
                         help="Total training timesteps")
-    parser.add_argument("--output-dir", type=pathlib.Path, default=pathlib.Path("./output"),
+    parser.add_argument("--output-dir", type=pathlib.Path,
+                        default=pathlib.Path("./output"),
                         help="Output directory")
-
-    # Reward weights (Priority: Breaks > Dummy > Shared > HPWL)
-    parser.add_argument("--w-break", type=float, default=100.0,
-                        help="Weight for diffusion breaks (HIGHEST PRIORITY)")
-    parser.add_argument("--w-dummy", type=float, default=50.0,
-                        help="Weight for dummy gates (2nd priority)")
-    parser.add_argument("--w-share", type=float, default=10.0,
-                        help="Weight for shared diffusion (3rd priority)")
-    parser.add_argument("--w-hpwl", type=float, default=2.0,
-                        help="Weight for HPWL (4th priority)")
-    parser.add_argument("--w-cdist", type=float, default=5.0,
-                        help="Weight for column distance")
-
-    # PPO hyperparameters
+    parser.add_argument("--w-break", type=float, default=100.0)
+    parser.add_argument("--w-dummy", type=float, default=50.0)
+    parser.add_argument("--w-share", type=float, default=10.0)
+    parser.add_argument("--w-hpwl", type=float, default=2.0)
+    parser.add_argument("--w-cdist", type=float, default=5.0)
     parser.add_argument("--learning-rate", type=float, default=3e-4)
     parser.add_argument("--n-steps", type=int, default=2048)
     parser.add_argument("--batch-size", type=int, default=64)
-    parser.add_argument("--ent-coef", type=float, default=0.02,
-                        help="Entropy coefficient (exploration)")
-
-    # ASAP7 parameters
-    parser.add_argument("--poly-pitch", type=float, default=0.054,
-                        help="Poly pitch in um (ASAP7: 0.054)")
-    parser.add_argument("--row-pitch", type=float, default=0.27,
-                        help="Row pitch in um (ASAP7: 0.27)")
-
-    parser.add_argument("--gpu", action="store_true",
-                        help="Force GPU usage")
+    parser.add_argument("--ent-coef", type=float, default=0.02)
 
     args = parser.parse_args()
 
-    # Validate arguments
     if args.input_file is None and args.env_dir is None:
         parser.error("Must provide either --input-file or --env-dir")
 
-    if args.input_file and args.env_dir:
-        parser.error("Cannot use both --input-file and --env-dir")
-
-    use_device = device
-
-    # Handle ASAP7 conversion
-    input_json = None
-    if args.asap7_mode:
-        if args.cell_name is None:
-            parser.error("--cell-name required when using --asap7-mode")
-        if args.input_file is None:
-            parser.error("--input-file required for ASAP7 mode")
-
-        print(f"Converting ASAP7 cell '{args.cell_name}'...")
-        env_json = parse_asap7_cell(args.input_file, args.cell_name,
-                                    args.poly_pitch, args.row_pitch)
-
-        converted_path = args.output_dir / f"{args.cell_name}_converted.json"
-        args.output_dir.mkdir(parents=True, exist_ok=True)
-        with open(converted_path, "w") as f:
-            json.dump(env_json, f, indent=2)
-        print(f"  Saved to: {converted_path}")
-        input_json = converted_path
-    elif args.input_file:
-        input_json = args.input_file
-
-    # Reward config
     reward_cfg = {
         "w_break": args.w_break,
         "w_dummy": args.w_dummy,
@@ -1419,7 +1331,6 @@ def main():
         "w_cdist": args.w_cdist,
     }
 
-    # PPO config
     ppo_kwargs = {
         "learning_rate": args.learning_rate,
         "n_steps": args.n_steps,
@@ -1434,43 +1345,27 @@ def main():
 
     print("=" * 80)
     print("Transistor Placement: GNN + Transformer + PPO")
-    print("Priority: Diffusion Breaks > Dummy > Shared > HPWL")
     print("=" * 80)
 
-    # Device selection
-    if args.gpu and torch.cuda.is_available():
-        use_device = torch.device("cuda")
-    else:
-        use_device = torch.device(
-            "cuda" if torch.cuda.is_available() else "cpu")
-
-    # Train
-    output_dir = args.output_dir
-    output_dir.mkdir(parents=True, exist_ok=True)
-
     if args.env_dir is not None:
-        # Multi-cell training (random cell per episode)
-        model, env = train_transistor_placement(
+        train_transistor_placement(
             json_path=None,
             env_dir=args.env_dir,
-            output_dir=output_dir,
+            output_dir=args.output_dir,
             total_timesteps=args.timesteps,
             reward_cfg=reward_cfg,
             ppo_kwargs=ppo_kwargs,
-            device_arg=use_device
+            device_arg=device
         )
     else:
-        # Single-cell training
-        if input_json is None:
-            raise ValueError("No input JSON resolved for single-cell mode.")
-        model, env = train_transistor_placement(
-            json_path=input_json,
+        train_transistor_placement(
+            json_path=args.input_file,
             env_dir=None,
-            output_dir=output_dir,
+            output_dir=args.output_dir,
             total_timesteps=args.timesteps,
             reward_cfg=reward_cfg,
             ppo_kwargs=ppo_kwargs,
-            device_arg=use_device
+            device_arg=device
         )
 
 
