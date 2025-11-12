@@ -55,33 +55,50 @@ class TransistorNode:
     is_pin: bool = False
 
 
+POWER_NET_NAMES = {"VDD", "VSS", "vdd", "vss", "VDD!", "VSS!"}
+
+
+def _is_power_net(net_name: str) -> bool:
+    if not isinstance(net_name, str):
+        return False
+    return net_name in POWER_NET_NAMES
+
+
+def _want_pin_token(tok: str) -> bool:
+    """
+    只接受 S/D/G 腳位；過濾 B 腳，且必須是 'DEV.PIN' 形式。
+    """
+    if not isinstance(tok, str) or "." not in tok:
+        return False
+    dev, pin = tok.split(".", 1)
+    return pin.upper() in {"S", "D", "G"}
+
+
 def build_graph_from_nets(devices: List[dict], nets: List[List[str]]) -> torch.Tensor:
-    """Build adjacency matrix using clique expansion"""
+    """Build adjacency matrix using clique expansion (ignore power nets & bulk pins)"""
     name_to_idx = {d["name"]: i for i, d in enumerate(devices)}
     N = len(devices)
     adj_matrix = np.zeros((N, N), dtype=np.float32)
 
-    def pin_to_dev(pin: str) -> Optional[int]:
-        if not isinstance(pin, str) or "." not in pin:
-            return None
-        dev_name = pin.split(".")[0]
-        return name_to_idx.get(dev_name, None)
-
     for net in nets:
-        pins = [p for p in net[:-1] if isinstance(p, str) and "." in p]
-        if not pins:
+        if not net:
+            continue
+        net_name = net[-1] if isinstance(net[-1], str) else None
+        if _is_power_net(net_name):
+            continue  # 忽略 VDD/VSS 類網
+
+        # 僅取 S/D/G 腳位，不要 B
+        pins = [tok for tok in net[:-1] if _want_pin_token(tok)]
+        if len(pins) < 2:
             continue
 
-        dev_indices = []
-        for pin in pins:
-            idx = pin_to_dev(pin)
-            if idx is not None:
-                dev_indices.append(idx)
-
-        dev_indices = sorted(set(dev_indices))
+        # 對應成 device indices，去重
+        dev_indices = sorted({name_to_idx.get(tok.split(".", 1)[0]) for tok in pins
+                              if name_to_idx.get(tok.split(".", 1)[0]) is not None})
         if len(dev_indices) < 2:
             continue
 
+        # clique expansion
         for i in range(len(dev_indices)):
             for j in range(i + 1, len(dev_indices)):
                 u, v = dev_indices[i], dev_indices[j]
@@ -89,19 +106,17 @@ def build_graph_from_nets(devices: List[dict], nets: List[List[str]]) -> torch.T
                     adj_matrix[u, v] = 1.0
                     adj_matrix[v, u] = 1.0
 
+    # self-loop + row-normalize
     for i in range(N):
         adj_matrix[i, i] = 1.0
-
     row_sums = adj_matrix.sum(axis=1, keepdims=True)
     adj_matrix = adj_matrix / (row_sums + 1e-8)
-
     return torch.tensor(adj_matrix, dtype=torch.float32)
 
 
 def parse_transistor_json(path: Union[str, pathlib.Path], verbose: bool = False) -> dict:
-    """Parse environment JSON with pin-to-net mapping"""
+    # --- 保持你原本的讀檔 ---
     path = pathlib.Path(path)
-
     with open(path, "r") as f:
         data = json.load(f)
 
@@ -111,6 +126,7 @@ def parse_transistor_json(path: Union[str, pathlib.Path], verbose: bool = False)
 
     name2idx = {d["name"]: i for i, d in enumerate(devices)}
 
+    # nodes（同原本）
     nodes = []
     for d in devices:
         nodes.append(TransistorNode(
@@ -123,8 +139,10 @@ def parse_transistor_json(path: Union[str, pathlib.Path], verbose: bool = False)
             is_pin=False
         ))
 
+    # **用新的 build_graph_from_nets（會忽略 power/B）**
     adj = build_graph_from_nets(devices, nets)
 
+    # pin_nets：只存 S/D/G（沿用你原本邏輯）
     pin_nets = {i: {"S": None, "D": None, "G": None}
                 for i in range(len(devices))}
 
@@ -144,29 +162,34 @@ def parse_transistor_json(path: Union[str, pathlib.Path], verbose: bool = False)
         net_name = net[-1] if isinstance(net[-1], str) else None
         for token in net[:-1]:
             if isinstance(token, str) and "." in token:
-                parts = token.split(".", 1)
-                if len(parts) == 2:
-                    dev, pin = parts
-                    set_pin(dev, pin, net_name)
+                dev, pin = token.split(".", 1)
+                set_pin(dev, pin, net_name)
 
+    # **netlist：供 HPWL 使用；過濾 power nets，且只看 S/D/G 腳**
     net_pin_indices = []
     for net in nets:
+        if not net:
+            continue
+        net_name = net[-1] if isinstance(net[-1], str) else None
+        if _is_power_net(net_name):
+            continue
+
         dev_idxs = []
-        for pin in net[:-1]:
-            if isinstance(pin, str) and "." in pin:
-                dev_name = pin.split(".")[0]
+        for tok in net[:-1]:
+            if _want_pin_token(tok):
+                dev_name = tok.split(".", 1)[0]
                 if dev_name in name2idx:
                     dev_idxs.append(name2idx[dev_name])
-
-        dev_idxs = list(sorted(set(dev_idxs)))
+        dev_idxs = sorted(set(dev_idxs))
         if len(dev_idxs) >= 1:
             net_pin_indices.append(dev_idxs)
 
+    # degree 取自過濾後的 adj
     N = len(devices)
-    deg = {}
-    for i in range(N):
-        deg[i] = int((adj[i].sum().item() - 1.0) * N)
+    deg = {i: int((adj[i].sum().item() - 1.0) * N) for i in range(N)}
 
+    # features（沿用，但 degree 乾淨）
+    MOS_TYPES = ["NMOS", "PMOS"]
     X = []
     for i, d in enumerate(devices):
         t_onehot = [1.0 if d["type"] == t else 0.0 for t in MOS_TYPES]
@@ -177,8 +200,8 @@ def parse_transistor_json(path: Union[str, pathlib.Path], verbose: bool = False)
             float(deg[i])
         ]
         X.append(feat)
-
     X = np.asarray(X, dtype=np.float32)
+
     pair_map = constraints.get("pair_map", {})
     grid = {
         "row_pitch": float(constraints.get("row_pitch", 1.0)),
@@ -1001,110 +1024,103 @@ class TqdmCallback(BaseCallback):
             self.pbar.close()
 
 
-class BestPlacementCallback(BaseCallback):
-    def __init__(self, env, csv_path: pathlib.Path, verbose: int = 1):
+class BestPerCellCallback(BaseCallback):
+    """
+    為每顆 cell 各自維護 best：Breaks -> Dummy -> Shared(大者佳) -> HPWL(小者佳)
+    會輸出到 out_dir/{cell_name}_best_placement.csv
+    """
+
+    def __init__(self, env, out_dir: pathlib.Path, verbose: int = 1):
         super().__init__(verbose)
         self.env = env
-        self.csv_path = csv_path
-        self.best_breaks = float('inf')
-        self.best_dummy = float('inf')
-        self.best_shared = 0.0
-        self.best_hpwl = float('inf')
-        self.header_written = False
+        self.out_dir = pathlib.Path(out_dir)
+        self.out_dir.mkdir(parents=True, exist_ok=True)
+        # 每顆 cell 的最佳記錄：cell_name -> {"key": (breaks,dummy,-shared,hpwl), "path": str}
+        self.best_by_cell: Dict[str, Dict[str, Any]] = {}
         self.episode_count = 0
 
-    def _on_training_start(self) -> None:
+    @staticmethod
+    def _rank_key(metrics: Dict[str, float]) -> Tuple[float, float, float, float]:
+        # 排序鍵：breaks 最小、dummy 最小、shared 最大（取負）、hpwl 最小
+        return (
+            float(metrics.get("breaks", float("inf"))),
+            float(metrics.get("dummy",  float("inf"))),
+            -float(metrics.get("shared", 0.0)),
+            float(metrics.get("hpwl",   float("inf"))),
+        )
+
+    def _cell_name_from_info(self, info: Dict[str, Any]) -> str:
+        # 優先從 info；fallback 到環境圖上的 cell_name
+        if "cell_name" in info and info["cell_name"]:
+            return info["cell_name"]
         try:
             env_single = self.env.envs[0]
-            placement = env_single.get_current_placement_dicts()
-            if placement:
-                self._write_csv(placement)
-        except Exception as e:
+            # 依你程式的 parse 結構，graph 內有 cell_name
+            if hasattr(env_single, "graph") and "cell_name" in env_single.graph:
+                return env_single.graph["cell_name"]
+        except Exception:
+            pass
+        return "unknown_cell"
+
+    def _write_csv(self, csv_path: pathlib.Path, placement: List[Dict[str, Any]]) -> None:
+        csv_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(csv_path, "w", newline="") as f:
+            fieldnames = ["device_name", "device_type", "row", "column",
+                          "x", "y", "orient", "w", "l", "nf", "pair_with"]
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(placement)
+
+    def _maybe_update_cell_best(self, cell_name: str, metrics: Dict[str, float], placement: List[Dict[str, Any]]):
+        new_key = self._rank_key(metrics)
+        rec = self.best_by_cell.get(cell_name)
+        if (rec is None) or (new_key < rec["key"]):
+            final_path = self.out_dir / f"{cell_name}_best_placement.csv"
+            self._write_csv(final_path, placement)
+            self.best_by_cell[cell_name] = {
+                "key": new_key, "path": str(final_path)}
             if self.verbose:
-                print(f"[Warning] Initial placement write failed: {e}")
+                print(f"[best] {cell_name}: breaks={metrics.get('breaks')}, "
+                      f"dummy={metrics.get('dummy')}, shared={metrics.get('shared')}, "
+                      f"hpwl={metrics.get('hpwl')} -> {final_path}")
 
     def _on_step(self) -> bool:
         try:
             dones = self.locals.get("dones", [False])
-            if not any(dones):
-                return True
-
-            env_single = self.env.envs[0]
             infos = self.locals.get("infos", [{}])
-
-            if not infos or "final_metrics" not in infos[0]:
+            if not any(dones) or not infos or "final_metrics" not in infos[0]:
                 return True
 
-            metrics = infos[0]["final_metrics"]
             self.episode_count += 1
+            info = infos[0]
+            metrics = info["final_metrics"]
+            cell_name = self._cell_name_from_info(info)
 
-            breaks = metrics["breaks"]
-            dummy = metrics["dummy"]
-            shared = metrics["shared"]
-            hpwl = metrics["hpwl"]
-            col_dist = metrics.get("col_dist", 0.0)
+            # 可選：記錄到 tensorboard（全局平均不分 cell）
+            if hasattr(self.model, "logger") and self.model.logger:
+                self.model.logger.record(
+                    "placement/breaks", float(metrics.get("breaks", 0)))
+                self.model.logger.record(
+                    "placement/dummy",  float(metrics.get("dummy", 0)))
+                self.model.logger.record(
+                    "placement/shared", float(metrics.get("shared", 0)))
+                self.model.logger.record(
+                    "placement/hpwl",   float(metrics.get("hpwl", 0)))
+                if "col_dist" in metrics:
+                    self.model.logger.record(
+                        "placement/col_dist", float(metrics.get("col_dist", 0)))
 
-            if hasattr(self.model, 'logger') and self.model.logger:
-                self.model.logger.record("placement/breaks", breaks)
-                self.model.logger.record("placement/dummy", dummy)
-                self.model.logger.record("placement/shared", shared)
-                self.model.logger.record("placement/hpwl", hpwl)
-                self.model.logger.record("placement/col_dist", col_dist)
-
-            is_better = False
-            if breaks < self.best_breaks:
-                is_better = True
-            elif breaks == self.best_breaks:
-                if dummy < self.best_dummy:
-                    is_better = True
-                elif dummy == self.best_dummy:
-                    if shared > self.best_shared:
-                        is_better = True
-                    elif shared == self.best_shared and hpwl < self.best_hpwl:
-                        is_better = True
-
-            if is_better:
-                self.best_breaks = breaks
-                self.best_dummy = dummy
-                self.best_shared = shared
-                self.best_hpwl = hpwl
-
-                placement = env_single.get_current_placement_dicts()
-                if placement:
-                    self._write_csv(placement)
-                    if self.verbose:
-                        print(f"\n[Best #{self.episode_count}] Breaks={breaks}, Dummy={dummy}, "
-                              f"Shared={shared:.1f}, HPWL={hpwl:.3f}, ColDist={col_dist:.2f}")
+            # 取本回合的佈局（環境要提供）
+            env_single = self.env.envs[0]
+            placement = env_single.get_current_placement_dicts()
+            if placement:
+                self._maybe_update_cell_best(cell_name, metrics, placement)
 
         except Exception as e:
             if self.verbose > 1:
-                print(f"[Warning] Callback error: {e}")
-
+                print(f"[Warning] BestPerCellCallback error: {e}")
         return True
 
-    def _on_training_end(self) -> None:
-        if not self.header_written:
-            try:
-                env_single = self.env.envs[0]
-                placement = env_single.get_current_placement_dicts()
-                if placement:
-                    self._write_csv(placement)
-            except Exception as e:
-                if self.verbose:
-                    print(f"[Warning] Final placement write failed: {e}")
-
-    def _write_csv(self, placement: List[Dict]):
-        try:
-            with open(self.csv_path, "w", newline="") as f:
-                fieldnames = ["device_name", "device_type", "row", "column",
-                              "x", "y", "orient", "w", "l", "nf", "pair_with"]
-                writer = csv.DictWriter(f, fieldnames=fieldnames)
-                writer.writeheader()
-                writer.writerows(placement)
-            self.header_written = True
-        except Exception as e:
-            if self.verbose:
-                print(f"[Error] CSV write failed: {e}")
 
 ###############################################################################
 # 8. Training Pipeline
@@ -1261,11 +1277,11 @@ def train_transistor_placement(
     print(f"\n[Training] Starting {total_timesteps} timesteps...")
     print(f"  TensorBoard: tensorboard --logdir {tb_log_dir}")
 
-    best_csv = output_dir / f"{output_name}_best_placement.csv"
+    best_dir = output_dir / "best_by_cell"
 
     callbacks = [
         TqdmCallback(total_timesteps),
-        BestPlacementCallback(env, best_csv, verbose=1)
+        BestPerCellCallback(env, best_dir, verbose=1),
     ]
 
     model.learn(
@@ -1289,6 +1305,48 @@ def train_transistor_placement(
     print(f"  TensorBoard: tensorboard --logdir {tb_log_dir}")
 
     return model, env
+
+
+def eval_all_cells_greedy(env: DummyVecEnv, model, out_dir: pathlib.Path, device: str = "cpu"):
+    """
+    對 env-dir 裡每顆 cell：reset -> 一路貪婪擺滿 -> 輸出 {cell}_best_placement.csv
+    需：你的 policy 在 predict() 內部有做 action mask（你訓練時就是這樣）。
+    """
+    out_dir.mkdir(parents=True, exist_ok=True)
+    mc_env = env.envs[0]  # RandomMultiCellEnv（單一環境）
+    env_files = list(mc_env.env_files)  # 所有 JSON 檔
+
+    for p in env_files:
+        # 1) 重建該 cell
+        g = mc_env._graphs[str(p)]
+        mc_env._rebuild_from_dict(g)
+        obs, info = mc_env.reset()  # SB3 新版可能回傳 (obs, info)
+        done = False
+
+        # 2) 迴圈：用模型「貪婪」動作直到 done
+        while not done:
+            # 如果你的自訂 policy 已在 forward 內部做了 masking，直接 deterministic=True 即可
+            try:
+                action, _ = model.predict(obs, deterministic=True)
+            except Exception:
+                # 若模型類型不相容，可改用手動打分 + mask 的路徑（視你 policy 實作）
+                raise RuntimeError(
+                    "model.predict 無法使用，請改走手動 scoring + masking 路徑。")
+
+            obs, reward, terminated, truncated, info = mc_env.step(action)
+            done = bool(terminated or truncated)
+
+        # 3) 回合結束：輸出 CSV（每顆 cell 一份）
+        placement = mc_env.get_current_placement_dicts()
+        cell_name = g.get("cell_name", pathlib.Path(p).stem)
+        csv_path = out_dir / f"{cell_name}_best_placement.csv"
+        with open(csv_path, "w", newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=[
+                "device_name", "device_type", "row", "column", "x", "y", "orient", "w", "l", "nf", "pair_with"
+            ])
+            writer.writeheader()
+            writer.writerows(placement)
+        print(f"[eval-all] wrote {csv_path}")
 
 ###############################################################################
 # 9. Main Entry Point
@@ -1317,7 +1375,10 @@ def main():
     parser.add_argument("--n-steps", type=int, default=2048)
     parser.add_argument("--batch-size", type=int, default=64)
     parser.add_argument("--ent-coef", type=float, default=0.02)
-
+    parser.add_argument("--eval-all", action="store_true",
+                        help="Run offline greedy evaluation on all cells in --env-dir and write per-cell CSVs.")
+    parser.add_argument("--model-path", type=str, default="",
+                        help="Path to a saved model (.zip from SB3 or your .pth depending on save logic).")
     args = parser.parse_args()
 
     if args.input_file is None and args.env_dir is None:
