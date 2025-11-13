@@ -762,7 +762,14 @@ class TransistorPlacementEnv(gym.Env):
             )
             info["final_metrics"] = final
             info["episode_steps"] = self.episode_steps
+
+            # 你原本就有這行（如果沒有也保留）：
             self.current_placement = self.get_current_placement_dicts()
+
+            # ★ 在這裡加這兩行：把資料塞進 info，讓 Callback 可直接取用
+            info["placement"] = self.current_placement
+            info["cell_name"] = self.graph.get("cell_name", "unknown_cell")
+
             print(f"[Done] Steps={self.episode_steps} | Breaks={final['breaks']} | "
                   f"Dummy={final['dummy']} | Shared={final['shared']:.1f} | "
                   f"HPWL={final['hpwl']:.3f} | ColDist={final['col_dist']:.2f}")
@@ -1026,99 +1033,196 @@ class TqdmCallback(BaseCallback):
 
 class BestPerCellCallback(BaseCallback):
     """
-    為每顆 cell 各自維護 best：Breaks -> Dummy -> Shared(大者佳) -> HPWL(小者佳)
+    為每顆 cell 各自維護 best：使用加權分數排序
     會輸出到 out_dir/{cell_name}_best_placement.csv
     """
 
-    def __init__(self, env, out_dir: pathlib.Path, verbose: int = 1):
+    def __init__(self, env, out_dir: pathlib.Path, reward_cfg: Dict = None, verbose: int = 1):
         super().__init__(verbose)
         self.env = env
         self.out_dir = pathlib.Path(out_dir)
         self.out_dir.mkdir(parents=True, exist_ok=True)
-        # 每顆 cell 的最佳記錄：cell_name -> {"key": (breaks,dummy,-shared,hpwl), "path": str}
+        # 每顆 cell 的最佳記錄：cell_name -> {"score": float, "metrics": dict, "path": str}
         self.best_by_cell: Dict[str, Dict[str, Any]] = {}
         self.episode_count = 0
+        self.reward_cfg = reward_cfg  # 從外部傳入
 
-    @staticmethod
-    def _rank_key(metrics: Dict[str, float]) -> Tuple[float, float, float, float]:
-        # 排序鍵：breaks 最小、dummy 最小、shared 最大（取負）、hpwl 最小
-        return (
-            float(metrics.get("breaks", float("inf"))),
-            float(metrics.get("dummy",  float("inf"))),
-            -float(metrics.get("shared", 0.0)),
-            float(metrics.get("hpwl",   float("inf"))),
+    def _get_weights(self) -> Dict[str, float]:
+        """獲取 reward 權重（優先級：傳入參數 > model.reward_cfg > 默認）"""
+        if self.reward_cfg is not None:
+            return self.reward_cfg
+
+        if hasattr(self.model, "reward_cfg") and self.model.reward_cfg:
+            return self.model.reward_cfg
+
+        # 默認值
+        return {
+            "w_break": 100.0,
+            "w_dummy": 50.0,
+            "w_share": 10.0,
+            "w_hpwl": 2.0,
+            "w_cdist": 5.0
+        }
+
+    def _compute_weighted_score(self, metrics: Dict[str, float]) -> float:
+        """
+        計算加權分數（越小越好）
+        Score = w_break*breaks + w_dummy*dummy - w_share*shared + w_hpwl*hpwl + w_cdist*col_dist
+        """
+        weights = self._get_weights()
+        score = (
+            weights.get("w_break", 100.0) * metrics.get("breaks", 0.0)
+            + weights.get("w_dummy", 50.0) * metrics.get("dummy", 0.0)
+            - weights.get("w_share", 10.0) * metrics.get("shared", 0.0)
+            + weights.get("w_hpwl", 2.0) * metrics.get("hpwl", 0.0)
+            + weights.get("w_cdist", 5.0) * metrics.get("col_dist", 0.0)
         )
+        return float(score)
 
     def _cell_name_from_info(self, info: Dict[str, Any]) -> str:
-        # 優先從 info；fallback 到環境圖上的 cell_name
-        if "cell_name" in info and info["cell_name"]:
+        """獲取 cell_name"""
+        # 1. 優先從 info
+        if "cell_name" in info and info["cell_name"] and info["cell_name"] != "unknown_cell":
             return info["cell_name"]
+
+        # 2. 從環境
         try:
             env_single = self.env.envs[0]
-            # 依你程式的 parse 結構，graph 內有 cell_name
             if hasattr(env_single, "graph") and "cell_name" in env_single.graph:
-                return env_single.graph["cell_name"]
+                cell_name = env_single.graph["cell_name"]
+                if cell_name and cell_name != "unknown_cell":
+                    return cell_name
         except Exception:
             pass
-        return "unknown_cell"
+
+        # 3. Fallback
+        return f"cell_{self.episode_count}"
 
     def _write_csv(self, csv_path: pathlib.Path, placement: List[Dict[str, Any]]) -> None:
+        """寫入 CSV"""
         csv_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(csv_path, "w", newline="") as f:
+        with open(csv_path, "w", newline="", encoding="utf-8") as f:
             fieldnames = ["device_name", "device_type", "row", "column",
                           "x", "y", "orient", "w", "l", "nf", "pair_with"]
             writer = csv.DictWriter(f, fieldnames=fieldnames)
             writer.writeheader()
             writer.writerows(placement)
 
-    def _maybe_update_cell_best(self, cell_name: str, metrics: Dict[str, float], placement: List[Dict[str, Any]]):
-        new_key = self._rank_key(metrics)
+    def _maybe_update_cell_best(self, cell_name: str, metrics: Dict[str, float],
+                                placement: List[Dict[str, Any]]):
+        """檢查並更新該 cell 的最佳結果"""
+        new_score = self._compute_weighted_score(metrics)
+
         rec = self.best_by_cell.get(cell_name)
-        if (rec is None) or (new_key < rec["key"]):
+
+        # 如果是第一次，或者新分數更小（更好），則更新
+        should_update = (rec is None) or (new_score < rec["score"])
+
+        if should_update:
             final_path = self.out_dir / f"{cell_name}_best_placement.csv"
             self._write_csv(final_path, placement)
+
             self.best_by_cell[cell_name] = {
-                "key": new_key, "path": str(final_path)}
+                "score": new_score,
+                "metrics": metrics.copy(),
+                "path": str(final_path)
+            }
+
             if self.verbose:
-                print(f"[best] {cell_name}: breaks={metrics.get('breaks')}, "
-                      f"dummy={metrics.get('dummy')}, shared={metrics.get('shared')}, "
-                      f"hpwl={metrics.get('hpwl')} -> {final_path}")
+                print(f"[Best] {cell_name}: score={new_score:.2f} "
+                      f"(breaks={metrics.get('breaks', 0)}, "
+                      f"dummy={metrics.get('dummy', 0)}, "
+                      f"shared={metrics.get('shared', 0):.1f}, "
+                      f"hpwl={metrics.get('hpwl', 0):.3f}, "
+                      f"col_dist={metrics.get('col_dist', 0):.2f})")
 
     def _on_step(self) -> bool:
         try:
+            # ✅ 獲取 dones 和 infos
             dones = self.locals.get("dones", [False])
             infos = self.locals.get("infos", [{}])
-            if not any(dones) or not infos or "final_metrics" not in infos[0]:
+
+            # 確保 dones 是可迭代的
+            if not isinstance(dones, (list, tuple, np.ndarray)):
+                dones = [dones]
+
+            # 檢查是否有 episode 完成
+            if not any(dones):
+                return True
+
+            # 檢查 infos 是否有效
+            if not infos or len(infos) == 0:
+                if self.verbose > 1:
+                    print("[Warning] No infos available in callback")
+                return True
+
+            info = infos[0]
+
+            # ✅ 關鍵：檢查是否有 final_metrics 和 placement
+            if "final_metrics" not in info:
+                if self.verbose > 1:
+                    print("[Warning] No final_metrics in info")
+                return True
+
+            if "placement" not in info:
+                if self.verbose > 1:
+                    print("[Warning] No placement in info")
                 return True
 
             self.episode_count += 1
-            info = infos[0]
             metrics = info["final_metrics"]
             cell_name = self._cell_name_from_info(info)
+            placement = info["placement"]
 
-            # 可選：記錄到 tensorboard（全局平均不分 cell）
+            # ✅ TensorBoard 記錄（改進：使用 cell-specific keys）
             if hasattr(self.model, "logger") and self.model.logger:
+                # 全局統計
                 self.model.logger.record(
                     "placement/breaks", float(metrics.get("breaks", 0)))
                 self.model.logger.record(
-                    "placement/dummy",  float(metrics.get("dummy", 0)))
+                    "placement/dummy", float(metrics.get("dummy", 0)))
                 self.model.logger.record(
                     "placement/shared", float(metrics.get("shared", 0)))
                 self.model.logger.record(
-                    "placement/hpwl",   float(metrics.get("hpwl", 0)))
-                if "col_dist" in metrics:
-                    self.model.logger.record(
-                        "placement/col_dist", float(metrics.get("col_dist", 0)))
+                    "placement/hpwl", float(metrics.get("hpwl", 0)))
+                self.model.logger.record(
+                    "placement/col_dist", float(metrics.get("col_dist", 0)))
 
-            # 取本回合的佈局（環境要提供）
-            env_single = self.env.envs[0]
-            placement = env_single.get_current_placement_dicts()
+                # 加權分數
+                score = self._compute_weighted_score(metrics)
+                self.model.logger.record("placement/weighted_score", score)
+
+                # Per-cell 統計
+                self.model.logger.record(
+                    f"placement/{cell_name}/breaks", float(metrics.get("breaks", 0)))
+                self.model.logger.record(
+                    f"placement/{cell_name}/dummy", float(metrics.get("dummy", 0)))
+                self.model.logger.record(
+                    f"placement/{cell_name}/shared", float(metrics.get("shared", 0)))
+                self.model.logger.record(
+                    f"placement/{cell_name}/hpwl", float(metrics.get("hpwl", 0)))
+                self.model.logger.record(
+                    f"placement/{cell_name}/weighted_score", score)
+
+            # ✅ 寫入 last placement
+            last_path = self.out_dir / f"{cell_name}_last_placement.csv"
+            self._write_csv(last_path, placement)
+
+            # ✅ 更新 best placement
             if placement:
                 self._maybe_update_cell_best(cell_name, metrics, placement)
 
-        except Exception as e:
+            # 調試輸出
             if self.verbose > 1:
-                print(f"[Warning] BestPerCellCallback error: {e}")
+                print(f"[Callback] Episode {self.episode_count}: "
+                      f"cell='{cell_name}', placement_len={len(placement)}")
+
+        except Exception as e:
+            if self.verbose:
+                import traceback
+                print(f"[Error] BestPerCellCallback exception:")
+                print(traceback.format_exc())
+
         return True
 
 
@@ -1168,6 +1272,9 @@ def make_sb3_model(graph_data, reward_cfg, device, ppo_kwargs=None, tb_log=None)
         tensorboard_log=tb_log
     )
 
+    # ✅ 設置 reward_cfg
+    model.reward_cfg = reward_cfg
+
     return model, env, (encoder, policy_net, value_net)
 
 
@@ -1214,6 +1321,9 @@ def make_multicell_model(env_files, reward_cfg, device, ppo_kwargs=None, tb_log=
         tensorboard_log=tb_log
     )
 
+    # ✅ 設置 reward_cfg
+    model.reward_cfg = reward_cfg
+
     return model, env, (encoder, policy_net, value_net)
 
 
@@ -1224,7 +1334,8 @@ def train_transistor_placement(
     total_timesteps: int = 100_000,
     reward_cfg: Optional[Dict] = None,
     ppo_kwargs: Optional[Dict] = None,
-    device_arg=None
+    device_arg=None,
+    resume_from: Optional[pathlib.Path] = None  # ✅ 直接作為參數傳入
 ):
     device_final = device_arg or device
     print(f"Using device: {device_final}")
@@ -1240,7 +1351,7 @@ def train_transistor_placement(
             "w_cdist": 5.0
         }
 
-    print(f"\n[Reward Weights] Priority: Breaks > Dummy > Shared > HPWL > ColDist")
+    print(f"\n[Reward Weights]")
     for k, v in reward_cfg.items():
         print(f"  {k}: {v}")
 
@@ -1269,6 +1380,24 @@ def train_transistor_placement(
 
     encoder, policy_net, value_net = networks
 
+    # ✅ 修正：Resume 功能
+    if resume_from is not None and resume_from.exists():
+        print(f"\n[Resume] Loading weights from {resume_from}")
+        try:
+            ckpt = torch.load(resume_from, map_location=device_final)
+            if "encoder" in ckpt:
+                encoder.load_state_dict(ckpt["encoder"])
+                print("  ✓ Encoder loaded")
+            if "policy" in ckpt:
+                policy_net.load_state_dict(ckpt["policy"])
+                print("  ✓ Policy loaded")
+            if "value" in ckpt:
+                value_net.load_state_dict(ckpt["value"])
+                print("  ✓ Value loaded")
+        except Exception as e:
+            print(f"  ✗ Resume failed: {e}")
+            print("  Starting from scratch...")
+
     total_params = sum(p.numel() for p in encoder.parameters()) + \
         sum(p.numel() for p in policy_net.parameters()) + \
         sum(p.numel() for p in value_net.parameters())
@@ -1279,9 +1408,10 @@ def train_transistor_placement(
 
     best_dir = output_dir / "best_by_cell"
 
+    # ✅ 傳遞 reward_cfg 給 callback
     callbacks = [
         TqdmCallback(total_timesteps),
-        BestPerCellCallback(env, best_dir, verbose=1),
+        BestPerCellCallback(env, best_dir, reward_cfg=reward_cfg, verbose=1),
     ]
 
     model.learn(
@@ -1291,6 +1421,7 @@ def train_transistor_placement(
         tb_log_name=output_name
     )
 
+    # 保存模型
     model_path = output_dir / f"{output_name}_model.pth"
     torch.save({
         "encoder": encoder.state_dict(),
@@ -1299,10 +1430,47 @@ def train_transistor_placement(
         "reward_cfg": reward_cfg
     }, model_path)
 
-    print(f"\n[Complete]")
-    print(f"  Model: {model_path}")
-    print(f"  Best placement: {best_csv}")
-    print(f"  TensorBoard: tensorboard --logdir {tb_log_dir}")
+    # ✅ 輸出訓練結果摘要
+    print(f"\n{'='*80}")
+    print(f"[Training Complete]")
+    print(f"{'='*80}")
+    print(f"  Model saved: {model_path}")
+    print(f"  TensorBoard logs: {tb_log_dir}")
+    print(f"  Best placements: {best_dir}")
+
+    # 列出所有已保存的 best placement
+    best_files = sorted(list(best_dir.glob("*_best_placement.csv")))
+    if best_files:
+        print(f"\n  Found {len(best_files)} best placement files:")
+        for f in best_files[:10]:  # 只顯示前 10 個
+            print(f"    - {f.name}")
+        if len(best_files) > 10:
+            print(f"    ... and {len(best_files) - 10} more")
+    else:
+        print(f"\n  ⚠️  Warning: No best placement files found!")
+        print(f"     Check if episodes completed successfully.")
+
+    # 檢查 callback 的統計
+    best_callback = None
+    for cb in callbacks:
+        if isinstance(cb, BestPerCellCallback):
+            best_callback = cb
+            break
+
+    if best_callback:
+        print(f"\n  Callback Statistics:")
+        print(f"    - Total episodes completed: {best_callback.episode_count}")
+        print(
+            f"    - Unique cells with best placement: {len(best_callback.best_by_cell)}")
+        if best_callback.best_by_cell:
+            print(f"\n  Best scores by cell:")
+            for cell_name, rec in sorted(best_callback.best_by_cell.items())[:5]:
+                print(f"    - {cell_name}: score={rec['score']:.2f}")
+            if len(best_callback.best_by_cell) > 5:
+                print(
+                    f"    ... and {len(best_callback.best_by_cell) - 5} more")
+
+    print(f"{'='*80}\n")
 
     return model, env
 
@@ -1375,12 +1543,102 @@ def main():
     parser.add_argument("--n-steps", type=int, default=2048)
     parser.add_argument("--batch-size", type=int, default=64)
     parser.add_argument("--ent-coef", type=float, default=0.02)
+    parser.add_argument("--resume-from", type=pathlib.Path, default=None,
+                        help="Path to a previous .pth checkpoint to resume")
+
+    # ✅ ADD THESE TWO ARGUMENTS
     parser.add_argument("--eval-all", action="store_true",
-                        help="Run offline greedy evaluation on all cells in --env-dir and write per-cell CSVs.")
-    parser.add_argument("--model-path", type=str, default="",
-                        help="Path to a saved model (.zip from SB3 or your .pth depending on save logic).")
+                        help="Run greedy evaluation on all cells in --env-dir")
+    parser.add_argument("--model-path", type=pathlib.Path, default=None,
+                        help="Path to trained model (.pth) for evaluation")
+
     args = parser.parse_args()
 
+    # ✅ ADD EVAL-ALL MODE CHECK AT THE TOP
+    if args.eval_all:
+        if args.env_dir is None:
+            parser.error("--eval-all requires --env-dir")
+        if args.model_path is None or not args.model_path.exists():
+            parser.error(
+                f"--eval-all requires valid --model-path (got: {args.model_path})")
+
+        print("="*80)
+        print("EVALUATION MODE: Greedy Inference on All Cells")
+        print("="*80)
+        print(f"Model: {args.model_path}")
+        print(f"Val dir: {args.env_dir}")
+        print(f"Output: {args.output_dir}")
+
+        # Load checkpoint
+        ckpt = torch.load(args.model_path, map_location=device)
+        reward_cfg = ckpt.get("reward_cfg", {
+            "w_break": 100.0, "w_dummy": 50.0, "w_share": 10.0,
+            "w_hpwl": 2.0, "w_cdist": 5.0
+        })
+
+        # Get validation files
+        env_files = sorted(list(args.env_dir.glob("*.json")))
+        if len(env_files) == 0:
+            raise ValueError(f"No JSON files found in {args.env_dir}")
+
+        print(f"\nFound {len(env_files)} cells to evaluate")
+
+        # Build networks
+        first_data = parse_transistor_json(env_files[0], verbose=False)
+        feature_dim = first_data["features"].size(1)
+
+        encoder = GNNEncoder(in_dim=feature_dim,
+                             out_dim=GNN_output_dim).to(device)
+        policy_net = TransformerPolicy(embed_dim=GNN_output_dim).to(device)
+        value_net = ValueNetwork(
+            embed_dim=GNN_output_dim, extra_dim=5).to(device)
+
+        # Load weights
+        encoder.load_state_dict(ckpt["encoder"])
+        policy_net.load_state_dict(ckpt["policy"])
+        value_net.load_state_dict(ckpt["value"])
+
+        encoder.eval()
+        policy_net.eval()
+        value_net.eval()
+
+        print("✓ Model loaded successfully")
+
+        # Create environment and model
+        def _make_env():
+            return RandomMultiCellEnv(env_files, reward_cfg, device=device)
+
+        env = DummyVecEnv([_make_env])
+
+        policy_kwargs = dict(
+            encoder=encoder,
+            policy_net=policy_net,
+            value_net=value_net,
+            graph_data=first_data,
+            env_ref=env.envs[0]
+        )
+
+        model = PPO(
+            policy=TransistorPolicySB3,
+            env=env,
+            policy_kwargs=policy_kwargs,
+            verbose=0,
+            device=device
+        )
+
+        # Run evaluation
+        out_dir = args.output_dir / "eval_results"
+        print(f"\nStarting evaluation...\n")
+        eval_all_cells_greedy(env, model, out_dir, device=str(device))
+
+        print(f"\n{'='*80}")
+        print(f"✅ Evaluation Complete!")
+        print(f"{'='*80}")
+        print(f"Results saved to: {out_dir}")
+        print(f"{'='*80}\n")
+        return  # Exit after evaluation
+
+    # ✅ ORIGINAL TRAINING LOGIC CONTINUES BELOW
     if args.input_file is None and args.env_dir is None:
         parser.error("Must provide either --input-file or --env-dir")
 
@@ -1416,7 +1674,8 @@ def main():
             total_timesteps=args.timesteps,
             reward_cfg=reward_cfg,
             ppo_kwargs=ppo_kwargs,
-            device_arg=device
+            device_arg=device,
+            resume_from=args.resume_from
         )
     else:
         train_transistor_placement(
@@ -1426,9 +1685,11 @@ def main():
             total_timesteps=args.timesteps,
             reward_cfg=reward_cfg,
             ppo_kwargs=ppo_kwargs,
-            device_arg=device
+            device_arg=device,
+            resume_from=args.resume_from
         )
-
-
+        
+        
+        
 if __name__ == "__main__":
     main()
