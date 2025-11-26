@@ -1,0 +1,10 @@
+-------- Solution 1 --------
+[Column 1]
+NMOS : MM5(3) [VSS net10 Y], PMOS : MM4(3) [VDD net10 Y]
+[Column 2]
+NMOS : MM5(3) [Y net10 VSS], PMOS : MM4(3) [Y net10 VDD]
+[Column 3]
+NMOS : MM3(3) [VSS A net20], PMOS : MM0(2) [VDD A net10]
+[Column 4]
+NMOS : MM2(3) [net20 B net10], PMOS : MM1(2) [net10 B VDD]
+

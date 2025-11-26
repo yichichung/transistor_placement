@@ -139,3 +139,49 @@ python reframe.py \
  --target preprocess/out_cells/\_clean/bins \
  --split 80/10/10 \
  --copy
+
+then:
+用 val/ 做 eval / 調參
+最後用 test/ 做 final eval
+
+1. 用 train/ 訓練: 跑 PPO 訓練, 學一個 model（GNN + Transformer + PPO）
+   python transistor_placement.py \
+    --env-dir preprocess/out_cells/\_clean/bins/0-5/train \
+    --timesteps 50000 \
+    --output-dir runs/0-5 \
+    --learning-rate 3e-4 \
+    --n-steps 2048 \
+    --batch-size 64 \
+    --ent-coef 0.02
+
+2. 用 val/ 來「評估」這個模型
+   現在已經有一個學好的 model：runs/0-5/multi_cell_model.pth。
+   接著想看看它在驗證資料 val/ 上表現如何 → 用 eval 模式：
+   用 runs/0-5/multi_cell_model.pth 的權重
+   讀 0-5/val 裡的 json，逐顆 cell 做 greedy placement
+   把結果存到：runs/0-5/eval_results/\*.csv
+
+python transistor_placement.py \
+ --env-dir preprocess/out_cells/\_clean/bins/0-5/train \
+ --timesteps 50000 \
+ --output-dir runs/0-5 \
+ --learning-rate 3e-4 \
+ --n-steps 2048 \
+ --batch-size 64 \
+ --ent-coef 0.02
+ 
+python transistor_placement.py \
+  --env-dir preprocess/out_cells/_clean/bins/6-9/train \
+  --timesteps 30000 \
+  --output-dir runs/6-9 \
+  --learning-rate 3e-4 \
+  --n-steps 2048 \
+  --batch-size 64 \
+  --ent-coef 0.02 \
+  --resume-from /Users/ninachung/Documents/GitHub/transistor_placement/runs/0-5/multi_cell_model.pth
+
+python transistor_placement.py \
+ --eval-all \
+ --env-dir preprocess/out_cells/\_clean/bins/0-5/val \
+ --model-path runs/0-5/multi_cell_model.pth \
+ --output-dir runs/0-5

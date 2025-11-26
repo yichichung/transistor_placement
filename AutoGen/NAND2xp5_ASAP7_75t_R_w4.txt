@@ -1,0 +1,12 @@
+-------- Solution 1 --------
+[Column 1]
+NMOS : MM2(3) [Y B net16], PMOS : MM1(2) [VDD B Y]
+[Column 2]
+NMOS : MM3(3) [net16 A VSS], PMOS : MM0(2) [Y A VDD]
+
+-------- Solution 2 --------
+[Column 1]
+NMOS : MM2(3) [Y B net16], PMOS : MM1(2) [Y B VDD]
+[Column 2]
+NMOS : MM3(3) [net16 A VSS], PMOS : MM0(2) [VDD A Y]
+

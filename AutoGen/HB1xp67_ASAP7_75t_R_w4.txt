@@ -1,0 +1,6 @@
+-------- Solution 1 --------
+[Column 1]
+NMOS : MM23(2) [Y net7 VSS], PMOS : MM22(2) [Y net7 VDD]
+[Column 2]
+NMOS : MM20(1) [VSS A net7], PMOS : MM21(1) [VDD A net7]
+

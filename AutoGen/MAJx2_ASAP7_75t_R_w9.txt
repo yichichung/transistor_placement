@@ -1,0 +1,16 @@
+-------- Solution 1 --------
+[Column 1]
+NMOS : MM2(3) [net1 C VSS], PMOS : MM7(3) [net3 C VDD]
+[Column 2]
+NMOS : MM4(3) [VSS C net17], PMOS : MM9(3) [VDD C net16]
+[Column 3]
+NMOS : MM3(3) [net17 B maji], PMOS : MM8(3) [net16 B maji]
+[Column 4]
+NMOS : MM0(3) [maji A net1], PMOS : MM5(3) [maji A net3]
+[Column 5]
+NMOS : MM1(3) [net1 B VSS], PMOS : MM6(3) [net3 B VDD]
+[Column 6]
+NMOS : MM10(3) [VSS maji Y], PMOS : MM11(3) [VDD maji Y]
+[Column 7]
+NMOS : MM10(3) [Y maji VSS], PMOS : MM11(3) [Y maji VDD]
+

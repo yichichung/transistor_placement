@@ -1,0 +1,8 @@
+-------- Solution 1 --------
+[Column 1]
+NMOS : MM3(3) [VSS AN Y], PMOS : MM0(3) [VDD AN Y]
+[Column 2]
+NMOS : MM3(3) [Y AN VSS], PMOS : MM0(3) [Y AN VDD]
+[Column 3]
+NMOS : MM2(2) [VSS A AN], PMOS : MM1(2) [VDD A AN]
+

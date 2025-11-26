@@ -1,0 +1,6 @@
+-------- Solution 1 --------
+[Column 1]
+NMOS : MM2(1) [VSS A Y], PMOS : MM3(2) [VDD A net16]
+[Column 2]
+NMOS : MM1(1) [Y B VSS], PMOS : MM4(2) [net16 B Y]
+

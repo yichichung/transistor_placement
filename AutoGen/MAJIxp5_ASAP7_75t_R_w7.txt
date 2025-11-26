@@ -1,0 +1,36 @@
+-------- Solution 1 --------
+[Column 1]
+NMOS : MM2(3) [net1 C VSS], PMOS : MM7(3) [net3 C VDD]
+[Column 2]
+NMOS : MM4(3) [VSS C net17], PMOS : MM9(3) [VDD C net16]
+[Column 3]
+NMOS : MM3(3) [net17 B Y], PMOS : MM8(3) [net16 B Y]
+[Column 4]
+NMOS : MM0(3) [Y A net1], PMOS : MM5(3) [Y A net3]
+[Column 5]
+NMOS : MM1(3) [net1 B VSS], PMOS : MM6(3) [net3 B VDD]
+
+-------- Solution 2 --------
+[Column 1]
+NMOS : MM1(3) [VSS B net1], PMOS : MM6(3) [VDD B net3]
+[Column 2]
+NMOS : MM0(3) [net1 A Y], PMOS : MM5(3) [net3 A Y]
+[Column 3]
+NMOS : MM3(3) [Y B net17], PMOS : MM8(3) [Y B net16]
+[Column 4]
+NMOS : MM4(3) [net17 C VSS], PMOS : MM9(3) [net16 C VDD]
+[Column 5]
+NMOS : MM2(3) [VSS C net1], PMOS : MM7(3) [VDD C net3]
+
+-------- Solution 3 --------
+[Column 1]
+NMOS : MM0(3) [net1 A Y], PMOS : MM5(3) [net3 A Y]
+[Column 2]
+NMOS : MM3(3) [Y B net17], PMOS : MM8(3) [Y B net16]
+[Column 3]
+NMOS : MM4(3) [net17 C VSS], PMOS : MM9(3) [net16 C VDD]
+[Column 4]
+NMOS : MM2(3) [VSS C net1], PMOS : MM7(3) [VDD C net3]
+[Column 5]
+NMOS : MM1(3) [net1 B VSS], PMOS : MM6(3) [net3 B VDD]
+

@@ -86,6 +86,8 @@ def build_graph_from_nets(devices: List[dict], nets: List[List[str]]) -> torch.T
         net_name = net[-1] if isinstance(net[-1], str) else None
         if _is_power_net(net_name):
             continue  # 忽略 VDD/VSS 類網
+        # or change to less weight
+
 
         # 僅取 S/D/G 腳位，不要 B
         pins = [tok for tok in net[:-1] if _want_pin_token(tok)]
@@ -1350,6 +1352,7 @@ def train_transistor_placement(
             "w_hpwl": 2.0,
             "w_cdist": 5.0
         }
+        #  normalize he break, dummy numbers
 
     print(f"\n[Reward Weights]")
     for k, v in reward_cfg.items():
@@ -1545,8 +1548,7 @@ def main():
     parser.add_argument("--ent-coef", type=float, default=0.02)
     parser.add_argument("--resume-from", type=pathlib.Path, default=None,
                         help="Path to a previous .pth checkpoint to resume")
-
-    # ✅ ADD THESE TWO ARGUMENTS
+    
     parser.add_argument("--eval-all", action="store_true",
                         help="Run greedy evaluation on all cells in --env-dir")
     parser.add_argument("--model-path", type=pathlib.Path, default=None,

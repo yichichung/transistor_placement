@@ -1,0 +1,5 @@
+device_name,device_type,row,column,x,y,orient,w,l,nf,pair_with
+MM2,NMOS,NMOS,0,0.0000,0.0000,R0,5.4e-08,2e-08,2,MM0
+MM0,PMOS,PMOS,0,0.0000,1.0000,MX,5.4e-08,2e-08,2,MM2
+MM1,PMOS,PMOS,1,0.0540,1.0000,MX,3.24e-07,2e-08,12,MM3
+MM3,NMOS,NMOS,1,0.0540,0.0000,R0,3.24e-07,2e-08,12,MM1
