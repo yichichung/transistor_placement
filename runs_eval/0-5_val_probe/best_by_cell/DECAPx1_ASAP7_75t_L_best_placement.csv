@@ -1,3 +1,0 @@
-device_name,device_type,row,column,x,y,orient,w,l,nf,pair_with
-MM2,NMOS,NMOS,0,0.0000,0.0000,R0,8.1e-08,2e-08,3,
-MM1,PMOS,PMOS,1,0.0540,1.0000,MX,8.1e-08,2e-08,3,
