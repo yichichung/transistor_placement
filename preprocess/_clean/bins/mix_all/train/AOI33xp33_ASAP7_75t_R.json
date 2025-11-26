@@ -1,0 +1,212 @@
+{
+  "devices": [
+    {
+      "name": "MM44",
+      "type": "NMOS",
+      "w": 8.1e-08,
+      "l": 2e-08,
+      "nf": 3,
+      "vt": "SVT"
+    },
+    {
+      "name": "MM45",
+      "type": "NMOS",
+      "w": 8.1e-08,
+      "l": 2e-08,
+      "nf": 3,
+      "vt": "SVT"
+    },
+    {
+      "name": "MM48",
+      "type": "NMOS",
+      "w": 8.1e-08,
+      "l": 2e-08,
+      "nf": 3,
+      "vt": "SVT"
+    },
+    {
+      "name": "MM39",
+      "type": "NMOS",
+      "w": 8.1e-08,
+      "l": 2e-08,
+      "nf": 3,
+      "vt": "SVT"
+    },
+    {
+      "name": "MM46",
+      "type": "NMOS",
+      "w": 8.1e-08,
+      "l": 2e-08,
+      "nf": 3,
+      "vt": "SVT"
+    },
+    {
+      "name": "MM47",
+      "type": "NMOS",
+      "w": 8.1e-08,
+      "l": 2e-08,
+      "nf": 3,
+      "vt": "SVT"
+    },
+    {
+      "name": "MM33",
+      "type": "PMOS",
+      "w": 5.4e-08,
+      "l": 2e-08,
+      "nf": 2,
+      "vt": "SVT"
+    },
+    {
+      "name": "MM35",
+      "type": "PMOS",
+      "w": 5.4e-08,
+      "l": 2e-08,
+      "nf": 2,
+      "vt": "SVT"
+    },
+    {
+      "name": "MM32",
+      "type": "PMOS",
+      "w": 5.4e-08,
+      "l": 2e-08,
+      "nf": 2,
+      "vt": "SVT"
+    },
+    {
+      "name": "MM38",
+      "type": "PMOS",
+      "w": 5.4e-08,
+      "l": 2e-08,
+      "nf": 2,
+      "vt": "SVT"
+    },
+    {
+      "name": "MM31",
+      "type": "PMOS",
+      "w": 5.4e-08,
+      "l": 2e-08,
+      "nf": 2,
+      "vt": "SVT"
+    },
+    {
+      "name": "MM37",
+      "type": "PMOS",
+      "w": 5.4e-08,
+      "l": 2e-08,
+      "nf": 2,
+      "vt": "SVT"
+    }
+  ],
+  "nets": [
+    [
+      "MM44.D",
+      "MM39.D",
+      "MM35.D",
+      "MM38.D",
+      "MM37.D",
+      "Y"
+    ],
+    [
+      "MM44.G",
+      "MM35.G",
+      "B1"
+    ],
+    [
+      "MM44.S",
+      "MM45.D",
+      "net52"
+    ],
+    [
+      "MM44.B",
+      "MM45.B",
+      "MM48.S",
+      "MM48.B",
+      "MM39.B",
+      "MM46.B",
+      "MM47.S",
+      "MM47.B",
+      "VSS"
+    ],
+    [
+      "MM45.G",
+      "MM38.G",
+      "B2"
+    ],
+    [
+      "MM45.S",
+      "MM48.D",
+      "net51"
+    ],
+    [
+      "MM48.G",
+      "MM37.G",
+      "B3"
+    ],
+    [
+      "MM39.G",
+      "MM33.G",
+      "A3"
+    ],
+    [
+      "MM39.S",
+      "MM46.D",
+      "net54"
+    ],
+    [
+      "MM46.G",
+      "MM32.G",
+      "A2"
+    ],
+    [
+      "MM46.S",
+      "MM47.D",
+      "net53"
+    ],
+    [
+      "MM47.G",
+      "MM31.G",
+      "A1"
+    ],
+    [
+      "MM33.D",
+      "MM35.S",
+      "MM32.D",
+      "MM38.S",
+      "MM31.D",
+      "MM37.S",
+      "net015"
+    ],
+    [
+      "MM33.S",
+      "MM33.B",
+      "MM35.B",
+      "MM32.S",
+      "MM32.B",
+      "MM38.B",
+      "MM31.S",
+      "MM31.B",
+      "MM37.B",
+      "VDD"
+    ]
+  ],
+  "constraints": {
+    "pair_map": {
+      "MM39": "MM33",
+      "MM33": "MM39",
+      "MM46": "MM32",
+      "MM32": "MM46",
+      "MM45": "MM38",
+      "MM38": "MM45",
+      "MM44": "MM35",
+      "MM35": "MM44",
+      "MM48": "MM37",
+      "MM37": "MM48",
+      "MM47": "MM31",
+      "MM31": "MM47"
+    },
+    "row_pitch": 0.27,
+    "poly_pitch": 0.054,
+    "y_pmos": 1.0,
+    "y_nmos": 0.0
+  }
+}

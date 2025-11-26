@@ -1,0 +1,337 @@
+{
+  "devices": [
+    {
+      "name": "MM19",
+      "type": "PMOS",
+      "w": 8.1e-08,
+      "l": 2e-08,
+      "nf": 3,
+      "vt": "SVT"
+    },
+    {
+      "name": "MM13",
+      "type": "PMOS",
+      "w": 8.1e-08,
+      "l": 2e-08,
+      "nf": 3,
+      "vt": "SVT"
+    },
+    {
+      "name": "MM14",
+      "type": "PMOS",
+      "w": 8.1e-08,
+      "l": 2e-08,
+      "nf": 3,
+      "vt": "SVT"
+    },
+    {
+      "name": "MM16",
+      "type": "PMOS",
+      "w": 8.1e-08,
+      "l": 2e-08,
+      "nf": 3,
+      "vt": "SVT"
+    },
+    {
+      "name": "MM12",
+      "type": "PMOS",
+      "w": 8.1e-08,
+      "l": 2e-08,
+      "nf": 3,
+      "vt": "SVT"
+    },
+    {
+      "name": "MM11",
+      "type": "PMOS",
+      "w": 8.1e-08,
+      "l": 2e-08,
+      "nf": 3,
+      "vt": "SVT"
+    },
+    {
+      "name": "MM17",
+      "type": "PMOS",
+      "w": 8.1e-08,
+      "l": 2e-08,
+      "nf": 3,
+      "vt": "SVT"
+    },
+    {
+      "name": "MM3",
+      "type": "PMOS",
+      "w": 8.1e-08,
+      "l": 2e-08,
+      "nf": 3,
+      "vt": "SVT"
+    },
+    {
+      "name": "MM10",
+      "type": "PMOS",
+      "w": 8.1e-08,
+      "l": 2e-08,
+      "nf": 3,
+      "vt": "SVT"
+    },
+    {
+      "name": "MM2",
+      "type": "PMOS",
+      "w": 8.1e-08,
+      "l": 2e-08,
+      "nf": 3,
+      "vt": "SVT"
+    },
+    {
+      "name": "MM18",
+      "type": "NMOS",
+      "w": 8.1e-08,
+      "l": 2e-08,
+      "nf": 3,
+      "vt": "SVT"
+    },
+    {
+      "name": "MM4",
+      "type": "NMOS",
+      "w": 8.1e-08,
+      "l": 2e-08,
+      "nf": 3,
+      "vt": "SVT"
+    },
+    {
+      "name": "MM1",
+      "type": "NMOS",
+      "w": 8.1e-08,
+      "l": 2e-08,
+      "nf": 3,
+      "vt": "SVT"
+    },
+    {
+      "name": "MM8",
+      "type": "NMOS",
+      "w": 8.1e-08,
+      "l": 2e-08,
+      "nf": 3,
+      "vt": "SVT"
+    },
+    {
+      "name": "MM9",
+      "type": "NMOS",
+      "w": 8.1e-08,
+      "l": 2e-08,
+      "nf": 3,
+      "vt": "SVT"
+    },
+    {
+      "name": "MM6",
+      "type": "NMOS",
+      "w": 8.1e-08,
+      "l": 2e-08,
+      "nf": 3,
+      "vt": "SVT"
+    },
+    {
+      "name": "MM7",
+      "type": "NMOS",
+      "w": 8.1e-08,
+      "l": 2e-08,
+      "nf": 3,
+      "vt": "SVT"
+    },
+    {
+      "name": "MM15",
+      "type": "NMOS",
+      "w": 8.1e-08,
+      "l": 2e-08,
+      "nf": 3,
+      "vt": "SVT"
+    },
+    {
+      "name": "MM5",
+      "type": "NMOS",
+      "w": 8.1e-08,
+      "l": 2e-08,
+      "nf": 3,
+      "vt": "SVT"
+    },
+    {
+      "name": "MM0",
+      "type": "NMOS",
+      "w": 8.1e-08,
+      "l": 2e-08,
+      "nf": 3,
+      "vt": "SVT"
+    }
+  ],
+  "nets": [
+    [
+      "MM19.D",
+      "MM19.B",
+      "MM13.D",
+      "MM13.B",
+      "MM14.B",
+      "MM16.B",
+      "MM12.B",
+      "MM11.B",
+      "MM17.B",
+      "MM3.D",
+      "MM3.B",
+      "MM10.D",
+      "MM10.B",
+      "MM2.B",
+      "VDD"
+    ],
+    [
+      "MM19.G",
+      "MM14.S",
+      "MM12.S",
+      "MM17.S",
+      "MM18.G",
+      "MM1.S",
+      "MM15.S",
+      "MM0.S",
+      "net020"
+    ],
+    [
+      "MM19.S",
+      "MM18.S",
+      "Y"
+    ],
+    [
+      "MM13.G",
+      "MM7.G",
+      "C3"
+    ],
+    [
+      "MM13.S",
+      "MM16.D",
+      "net040"
+    ],
+    [
+      "MM14.D",
+      "MM2.S",
+      "net084"
+    ],
+    [
+      "MM14.G",
+      "MM1.G",
+      "A1"
+    ],
+    [
+      "MM16.G",
+      "MM8.G",
+      "C2"
+    ],
+    [
+      "MM16.S",
+      "MM17.D",
+      "net086"
+    ],
+    [
+      "MM12.D",
+      "MM11.S",
+      "net087"
+    ],
+    [
+      "MM12.G",
+      "MM6.G",
+      "B1"
+    ],
+    [
+      "MM11.D",
+      "MM10.S",
+      "net041"
+    ],
+    [
+      "MM11.G",
+      "MM5.G",
+      "B2"
+    ],
+    [
+      "MM17.G",
+      "MM9.G",
+      "C1"
+    ],
+    [
+      "MM3.G",
+      "MM15.G",
+      "A3"
+    ],
+    [
+      "MM3.S",
+      "MM2.D",
+      "net038"
+    ],
+    [
+      "MM10.G",
+      "MM4.G",
+      "B3"
+    ],
+    [
+      "MM2.G",
+      "MM0.G",
+      "A2"
+    ],
+    [
+      "MM18.D",
+      "MM18.B",
+      "MM4.B",
+      "MM1.B",
+      "MM8.D",
+      "MM8.B",
+      "MM9.D",
+      "MM9.B",
+      "MM6.B",
+      "MM7.D",
+      "MM7.B",
+      "MM15.B",
+      "MM5.B",
+      "MM0.B",
+      "VSS"
+    ],
+    [
+      "MM4.D",
+      "MM8.S",
+      "MM9.S",
+      "MM6.D",
+      "MM7.S",
+      "MM5.D",
+      "net068"
+    ],
+    [
+      "MM4.S",
+      "MM1.D",
+      "MM6.S",
+      "MM15.D",
+      "MM5.S",
+      "MM0.D",
+      "net015"
+    ]
+  ],
+  "constraints": {
+    "pair_map": {
+      "MM0": "MM2",
+      "MM2": "MM0",
+      "MM7": "MM13",
+      "MM13": "MM7",
+      "MM4": "MM10",
+      "MM10": "MM4",
+      "MM1": "MM14",
+      "MM14": "MM1",
+      "MM9": "MM17",
+      "MM17": "MM9",
+      "MM15": "MM3",
+      "MM3": "MM15",
+      "MM18": "MM19",
+      "MM19": "MM18",
+      "MM5": "MM11",
+      "MM11": "MM5",
+      "MM6": "MM12",
+      "MM12": "MM6",
+      "MM8": "MM16",
+      "MM16": "MM8"
+    },
+    "row_pitch": 0.27,
+    "poly_pitch": 0.054,
+    "y_pmos": 1.0,
+    "y_nmos": 0.0
+  }
+}

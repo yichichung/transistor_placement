@@ -1,0 +1,145 @@
+{
+  "devices": [
+    {
+      "name": "MM1",
+      "type": "NMOS",
+      "w": 8.1e-08,
+      "l": 2e-08,
+      "nf": 3,
+      "vt": "SVT"
+    },
+    {
+      "name": "MM14",
+      "type": "NMOS",
+      "w": 8.1e-08,
+      "l": 2e-08,
+      "nf": 3,
+      "vt": "SVT"
+    },
+    {
+      "name": "MM13",
+      "type": "NMOS",
+      "w": 8.1e-08,
+      "l": 2e-08,
+      "nf": 3,
+      "vt": "SVT"
+    },
+    {
+      "name": "MM12",
+      "type": "NMOS",
+      "w": 8.1e-08,
+      "l": 2e-08,
+      "nf": 3,
+      "vt": "SVT"
+    },
+    {
+      "name": "MM0",
+      "type": "PMOS",
+      "w": 8.1e-08,
+      "l": 2e-08,
+      "nf": 3,
+      "vt": "SVT"
+    },
+    {
+      "name": "MM8",
+      "type": "PMOS",
+      "w": 8.1e-08,
+      "l": 2e-08,
+      "nf": 3,
+      "vt": "SVT"
+    },
+    {
+      "name": "MM10",
+      "type": "PMOS",
+      "w": 8.1e-08,
+      "l": 2e-08,
+      "nf": 3,
+      "vt": "SVT"
+    },
+    {
+      "name": "MM11",
+      "type": "PMOS",
+      "w": 8.1e-08,
+      "l": 2e-08,
+      "nf": 3,
+      "vt": "SVT"
+    }
+  ],
+  "nets": [
+    [
+      "MM1.D",
+      "MM0.D",
+      "Y"
+    ],
+    [
+      "MM1.G",
+      "MM14.D",
+      "MM13.D",
+      "MM12.D",
+      "MM0.G",
+      "MM11.D",
+      "net61"
+    ],
+    [
+      "MM1.S",
+      "MM1.B",
+      "MM14.S",
+      "MM14.B",
+      "MM13.S",
+      "MM13.B",
+      "MM12.S",
+      "MM12.B",
+      "VSS"
+    ],
+    [
+      "MM14.G",
+      "MM8.G",
+      "C"
+    ],
+    [
+      "MM13.G",
+      "MM10.G",
+      "B"
+    ],
+    [
+      "MM12.G",
+      "MM11.G",
+      "A"
+    ],
+    [
+      "MM0.S",
+      "MM0.B",
+      "MM8.S",
+      "MM8.B",
+      "MM10.B",
+      "MM11.B",
+      "VDD"
+    ],
+    [
+      "MM8.D",
+      "MM10.S",
+      "net66"
+    ],
+    [
+      "MM10.D",
+      "MM11.S",
+      "net67"
+    ]
+  ],
+  "constraints": {
+    "pair_map": {
+      "MM14": "MM8",
+      "MM8": "MM14",
+      "MM1": "MM0",
+      "MM0": "MM1",
+      "MM13": "MM10",
+      "MM10": "MM13",
+      "MM12": "MM11",
+      "MM11": "MM12"
+    },
+    "row_pitch": 0.27,
+    "poly_pitch": 0.054,
+    "y_pmos": 1.0,
+    "y_nmos": 0.0
+  }
+}

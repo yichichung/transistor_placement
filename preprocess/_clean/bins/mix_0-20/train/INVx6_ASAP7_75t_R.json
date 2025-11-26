@@ -1,0 +1,52 @@
+{
+  "devices": [
+    {
+      "name": "MM0",
+      "type": "NMOS",
+      "w": 4.86e-07,
+      "l": 2e-08,
+      "nf": 18,
+      "vt": "SVT"
+    },
+    {
+      "name": "MM1",
+      "type": "PMOS",
+      "w": 4.86e-07,
+      "l": 2e-08,
+      "nf": 18,
+      "vt": "SVT"
+    }
+  ],
+  "nets": [
+    [
+      "MM0.D",
+      "MM1.D",
+      "Y"
+    ],
+    [
+      "MM0.G",
+      "MM1.G",
+      "A"
+    ],
+    [
+      "MM0.S",
+      "MM0.B",
+      "VSS"
+    ],
+    [
+      "MM1.S",
+      "MM1.B",
+      "VDD"
+    ]
+  ],
+  "constraints": {
+    "pair_map": {
+      "MM0": "MM1",
+      "MM1": "MM0"
+    },
+    "row_pitch": 0.27,
+    "poly_pitch": 0.054,
+    "y_pmos": 1.0,
+    "y_nmos": 0.0
+  }
+}

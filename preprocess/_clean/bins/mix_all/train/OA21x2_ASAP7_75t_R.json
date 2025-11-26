@@ -1,0 +1,145 @@
+{
+  "devices": [
+    {
+      "name": "MM3",
+      "type": "PMOS",
+      "w": 1.62e-07,
+      "l": 2e-08,
+      "nf": 6,
+      "vt": "SVT"
+    },
+    {
+      "name": "MM2",
+      "type": "PMOS",
+      "w": 8.1e-08,
+      "l": 2e-08,
+      "nf": 3,
+      "vt": "SVT"
+    },
+    {
+      "name": "MM1",
+      "type": "PMOS",
+      "w": 8.1e-08,
+      "l": 2e-08,
+      "nf": 3,
+      "vt": "SVT"
+    },
+    {
+      "name": "MM0",
+      "type": "PMOS",
+      "w": 8.1e-08,
+      "l": 2e-08,
+      "nf": 3,
+      "vt": "SVT"
+    },
+    {
+      "name": "MM7",
+      "type": "NMOS",
+      "w": 1.62e-07,
+      "l": 2e-08,
+      "nf": 6,
+      "vt": "SVT"
+    },
+    {
+      "name": "MM6",
+      "type": "NMOS",
+      "w": 8.1e-08,
+      "l": 2e-08,
+      "nf": 3,
+      "vt": "SVT"
+    },
+    {
+      "name": "MM5",
+      "type": "NMOS",
+      "w": 8.1e-08,
+      "l": 2e-08,
+      "nf": 3,
+      "vt": "SVT"
+    },
+    {
+      "name": "MM4",
+      "type": "NMOS",
+      "w": 8.1e-08,
+      "l": 2e-08,
+      "nf": 3,
+      "vt": "SVT"
+    }
+  ],
+  "nets": [
+    [
+      "MM3.D",
+      "MM7.D",
+      "Y"
+    ],
+    [
+      "MM3.G",
+      "MM2.D",
+      "MM1.D",
+      "MM7.G",
+      "MM5.D",
+      "MM4.D",
+      "net25"
+    ],
+    [
+      "MM3.S",
+      "MM3.B",
+      "MM2.S",
+      "MM2.B",
+      "MM1.B",
+      "MM0.S",
+      "MM0.B",
+      "VDD"
+    ],
+    [
+      "MM2.G",
+      "MM6.G",
+      "B"
+    ],
+    [
+      "MM1.G",
+      "MM5.G",
+      "A2"
+    ],
+    [
+      "MM1.S",
+      "MM0.D",
+      "net27"
+    ],
+    [
+      "MM0.G",
+      "MM4.G",
+      "A1"
+    ],
+    [
+      "MM7.S",
+      "MM7.B",
+      "MM6.S",
+      "MM6.B",
+      "MM5.B",
+      "MM4.B",
+      "VSS"
+    ],
+    [
+      "MM6.D",
+      "MM5.S",
+      "MM4.S",
+      "net11"
+    ]
+  ],
+  "constraints": {
+    "pair_map": {
+      "MM5": "MM1",
+      "MM1": "MM5",
+      "MM7": "MM3",
+      "MM3": "MM7",
+      "MM6": "MM2",
+      "MM2": "MM6",
+      "MM4": "MM0",
+      "MM0": "MM4"
+    },
+    "row_pitch": 0.27,
+    "poly_pitch": 0.054,
+    "y_pmos": 1.0,
+    "y_nmos": 0.0
+  }
+}

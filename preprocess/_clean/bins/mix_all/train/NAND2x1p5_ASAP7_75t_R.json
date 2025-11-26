@@ -1,0 +1,84 @@
+{
+  "devices": [
+    {
+      "name": "MM3",
+      "type": "NMOS",
+      "w": 2.43e-07,
+      "l": 2e-08,
+      "nf": 9,
+      "vt": "SVT"
+    },
+    {
+      "name": "MM2",
+      "type": "NMOS",
+      "w": 2.43e-07,
+      "l": 2e-08,
+      "nf": 9,
+      "vt": "SVT"
+    },
+    {
+      "name": "MM1",
+      "type": "PMOS",
+      "w": 1.35e-07,
+      "l": 2e-08,
+      "nf": 5,
+      "vt": "SVT"
+    },
+    {
+      "name": "MM0",
+      "type": "PMOS",
+      "w": 1.35e-07,
+      "l": 2e-08,
+      "nf": 5,
+      "vt": "SVT"
+    }
+  ],
+  "nets": [
+    [
+      "MM3.D",
+      "MM2.S",
+      "net16"
+    ],
+    [
+      "MM3.G",
+      "MM0.G",
+      "A"
+    ],
+    [
+      "MM3.S",
+      "MM3.B",
+      "MM2.B",
+      "VSS"
+    ],
+    [
+      "MM2.D",
+      "MM1.D",
+      "MM0.D",
+      "Y"
+    ],
+    [
+      "MM2.G",
+      "MM1.G",
+      "B"
+    ],
+    [
+      "MM1.S",
+      "MM1.B",
+      "MM0.S",
+      "MM0.B",
+      "VDD"
+    ]
+  ],
+  "constraints": {
+    "pair_map": {
+      "MM2": "MM1",
+      "MM1": "MM2",
+      "MM3": "MM0",
+      "MM0": "MM3"
+    },
+    "row_pitch": 0.27,
+    "poly_pitch": 0.054,
+    "y_pmos": 1.0,
+    "y_nmos": 0.0
+  }
+}
