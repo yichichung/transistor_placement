@@ -1,0 +1,148 @@
+{
+  "devices": [
+    {
+      "name": "MM39",
+      "type": "PMOS",
+      "w": 5.4e-08,
+      "l": 2e-08,
+      "nf": 2,
+      "vt": "SVT"
+    },
+    {
+      "name": "MM38",
+      "type": "PMOS",
+      "w": 5.4e-08,
+      "l": 2e-08,
+      "nf": 2,
+      "vt": "SVT"
+    },
+    {
+      "name": "MM37",
+      "type": "PMOS",
+      "w": 5.4e-08,
+      "l": 2e-08,
+      "nf": 2,
+      "vt": "SVT"
+    },
+    {
+      "name": "MM36",
+      "type": "PMOS",
+      "w": 5.4e-08,
+      "l": 2e-08,
+      "nf": 2,
+      "vt": "SVT"
+    },
+    {
+      "name": "MM41",
+      "type": "NMOS",
+      "w": 8.1e-08,
+      "l": 2e-08,
+      "nf": 3,
+      "vt": "SVT"
+    },
+    {
+      "name": "MM43",
+      "type": "NMOS",
+      "w": 8.1e-08,
+      "l": 2e-08,
+      "nf": 3,
+      "vt": "SVT"
+    },
+    {
+      "name": "MM40",
+      "type": "NMOS",
+      "w": 8.1e-08,
+      "l": 2e-08,
+      "nf": 3,
+      "vt": "SVT"
+    },
+    {
+      "name": "MM42",
+      "type": "NMOS",
+      "w": 8.1e-08,
+      "l": 2e-08,
+      "nf": 3,
+      "vt": "SVT"
+    }
+  ],
+  "nets": [
+    [
+      "MM39.D",
+      "MM38.D",
+      "MM37.D",
+      "MM41.D",
+      "MM40.D",
+      "Y"
+    ],
+    [
+      "MM39.G",
+      "MM43.G",
+      "C"
+    ],
+    [
+      "MM39.S",
+      "MM39.B",
+      "MM38.S",
+      "MM38.B",
+      "MM37.B",
+      "MM36.S",
+      "MM36.B",
+      "VDD"
+    ],
+    [
+      "MM38.G",
+      "MM42.G",
+      "B"
+    ],
+    [
+      "MM37.G",
+      "MM41.G",
+      "A2"
+    ],
+    [
+      "MM37.S",
+      "MM36.D",
+      "net20"
+    ],
+    [
+      "MM36.G",
+      "MM40.G",
+      "A1"
+    ],
+    [
+      "MM41.S",
+      "MM40.S",
+      "MM42.D",
+      "net10"
+    ],
+    [
+      "MM41.B",
+      "MM43.S",
+      "MM43.B",
+      "MM40.B",
+      "MM42.B",
+      "VSS"
+    ],
+    [
+      "MM43.D",
+      "MM42.S",
+      "net19"
+    ]
+  ],
+  "constraints": {
+    "pair_map": {
+      "MM43": "MM39",
+      "MM39": "MM43",
+      "MM41": "MM37",
+      "MM37": "MM41",
+      "MM42": "MM38",
+      "MM38": "MM42",
+      "MM40": "MM36",
+      "MM36": "MM40"
+    },
+    "row_pitch": 0.27,
+    "poly_pitch": 0.054,
+    "y_pmos": 1.0,
+    "y_nmos": 0.0
+  }
+}

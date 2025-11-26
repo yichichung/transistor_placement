@@ -127,11 +127,11 @@ the terminal meseage for
 
 cdl2json:
 python cdl2json.py \
- --in asap7sc7p5t_28/CDL/LVS/asap7sc7p5t_28_L.cdl \
- --out-dir preprocess/out_cells/cdl_json
+ --in asap7sc7p5t.sp \
+ --out-dir preprocess
 
 dedup:
-python dedup_and_bin_cells.py --root preprocess/out_cells --apply
+python dedup_and_bin_cells.py --root preprocess --apply
 
 reframe.py:
 python reframe.py \
@@ -169,16 +169,16 @@ python transistor_placement.py \
  --n-steps 2048 \
  --batch-size 64 \
  --ent-coef 0.02
- 
+
 python transistor_placement.py \
-  --env-dir preprocess/out_cells/_clean/bins/6-9/train \
-  --timesteps 30000 \
-  --output-dir runs/6-9 \
-  --learning-rate 3e-4 \
-  --n-steps 2048 \
-  --batch-size 64 \
-  --ent-coef 0.02 \
-  --resume-from /Users/ninachung/Documents/GitHub/transistor_placement/runs/0-5/multi_cell_model.pth
+ --env-dir preprocess/out_cells/\_clean/bins/6-9/train \
+ --timesteps 30000 \
+ --output-dir runs/6-9 \
+ --learning-rate 3e-4 \
+ --n-steps 2048 \
+ --batch-size 64 \
+ --ent-coef 0.02 \
+ --resume-from /Users/ninachung/Documents/GitHub/transistor_placement/runs/0-5/multi_cell_model.pth
 
 python transistor_placement.py \
  --eval-all \
