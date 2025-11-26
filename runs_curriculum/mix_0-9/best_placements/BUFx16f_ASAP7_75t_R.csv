@@ -1,0 +1,6 @@
+Cell:,BUFx16f_ASAP7_75t_R,Width:,60,HPWL:,10.00
+Name,X,Y,Orient,Row,Flipped
+MM1,0.000,1.0,MX,PMOS,False
+MM3,0.000,0.0,R0,NMOS,False
+MM2,2.592,0.0,MY,NMOS,True
+MM0,2.592,1.0,MX,PMOS,False

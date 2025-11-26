@@ -1,0 +1,4 @@
+Cell:,INVx8_ASAP7_75t_R,Width:,24,HPWL:,5.00
+Name,X,Y,Orient,Row,Flipped
+MM0,0.000,0.0,MY,NMOS,True
+MM1,0.000,1.0,MX,PMOS,False

@@ -1,0 +1,6 @@
+Cell:,BUFx8_ASAP7_75t_R,Width:,28,HPWL:,10.00
+Name,X,Y,Orient,Row,Flipped
+MM2,0.000,0.0,R0,NMOS,False
+MM0,0.000,1.0,MX_R180,PMOS,True
+MM3,0.216,0.0,R0,NMOS,False
+MM1,0.216,1.0,MX,PMOS,False

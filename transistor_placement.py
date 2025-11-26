@@ -1,12 +1,10 @@
 """
-Transistor Placement V2.1: Final Complete + Auto-Save Best Solutions
+Transistor Placement V2.2: True Random Sampling + Diffusion Metrics
 --------------------------------------------------------------------------
-Features:
-1. Dual-Rail & Flip: Supports PMOS/NMOS row separation and device orientation.
-2. Physical Awareness: Correct NF width logic and physical pin matching.
-3. Auto-Save: Tracks best solution per cell (min width, min HPWL) and saves to CSV.
-4. JIT Behavior Cloning: Warm start from expert data.
-5. Robustness: All previous bug fixes (masks, types, graph weights) included.
+Updates:
+1. True Random Sampling: Loads a new random circuit on every reset().
+2. Metrics: Tracks Diffusion Shares and Breaks in Tensorboard.
+3. Fixes: 'w-dummy' argument removed.
 """
 from __future__ import annotations
 import json
@@ -59,11 +57,6 @@ def _is_power_net(net_name: str) -> bool:
 
 
 def build_graph_from_nets(devices: List[dict], nets: List[List[str]]) -> torch.Tensor:
-    """
-    Builds adjacency matrix.
-    Weight 1.0 for S/D connections (strong).
-    Weight 0.5 for Gate connections (weak).
-    """
     name_to_idx = {d["name"]: i for i, d in enumerate(devices)}
     N = len(devices)
     adj_matrix = np.zeros((N, N), dtype=np.float32)
@@ -102,11 +95,9 @@ def build_graph_from_nets(devices: List[dict], nets: List[List[str]]) -> torch.T
                 adj_matrix[v_idx, u_idx] = max(
                     adj_matrix[v_idx, u_idx], weight)
 
-    # Self-loops
     for i in range(N):
         adj_matrix[i, i] = 1.0
 
-    # Normalize
     row_sums = adj_matrix.sum(axis=1, keepdims=True)
     adj_matrix = adj_matrix / (row_sums + 1e-8)
     return torch.tensor(adj_matrix, dtype=torch.float32)
@@ -117,13 +108,12 @@ def load_design_data(json_path: str):
         data = json.load(f)
     devices = data.get("instances", data.get("devices", []))
     nets = data.get("nets", [])
-    # Default grid settings if not present
     grid = data.get("grid", {"poly_pitch": 0.054,
                     "row_pitch": 1.0, "y_nmos": 0.0, "y_pmos": 1.0})
     return devices, nets, grid
 
 ###############################################################################
-# 2. Neural Networks (GNN + Transformer)
+# 2. Neural Networks
 ###############################################################################
 
 
@@ -166,7 +156,6 @@ class TransistorPolicySB3(MaskableActorCriticPolicy):
         super().__init__(observation_space, action_space, lr_schedule, **kwargs)
 
         self.N_max = observation_space["node_features"].shape[0]
-        feat_dim = observation_space["node_features"].shape[1]
 
         self.gnn = GNNEncoder(in_dim=5, hid_dim=64, out_dim=GNN_output_dim)
         self.pos_encoder = PositionEncoder1D(
@@ -189,21 +178,15 @@ class TransistorPolicySB3(MaskableActorCriticPolicy):
         step = obs["step_count"].long()
 
         node_embeds = self.gnn(x, adj)
-
-        # Add positional info to query
         tgt = self.query_token.expand(x.shape[0], 1, -1)
         tgt = self.pos_encoder(tgt, step)
 
-        # Transformer Attention
         dec_out = self.transformer_decoder(tgt, node_embeds).squeeze(1)
 
-        # Action Heads:
-        # First N logits -> Normal Placement
-        # Second N logits -> Flipped Placement
         logits_nf = torch.bmm(node_embeds, dec_out.unsqueeze(-1)).squeeze(-1)
         logits_f = torch.bmm(node_embeds, dec_out.unsqueeze(-1)).squeeze(-1)
 
-        logits = torch.cat([logits_nf, logits_f], dim=1)  # Shape: [Batch, 2*N]
+        logits = torch.cat([logits_nf, logits_f], dim=1)
         return logits, node_embeds
 
     def _apply_mask(self, logits, action_masks):
@@ -239,34 +222,52 @@ class TransistorPolicySB3(MaskableActorCriticPolicy):
         return self.value_head(node_embeds.mean(dim=1))
 
 ###############################################################################
-# 3. Environment (Dual Rail + Flip + AutoSave Support)
+# 3. Environment (True Random Sampling + Metrics)
 ###############################################################################
 
 
 class TransistorPlacementEnv(gym.Env):
-    def __init__(self, design_data_path: str, n_max_pad: int = 50, reward_cfg: dict = None):
+    def __init__(self, input_path: Union[str, pathlib.Path], n_max_pad: int = 50, reward_cfg: dict = None):
         super().__init__()
-        self.devices, self.nets, self.grid = load_design_data(design_data_path)
-        self.raw_num_devices = len(self.devices)
+        self.input_path = pathlib.Path(input_path)
         self.N_max = n_max_pad
         self.reward_cfg = reward_cfg if reward_cfg else {}
 
-        # Store Cell Name for Logging
-        self.cell_name = pathlib.Path(design_data_path).stem
+        # Mode detection: Directory (Random RL) vs File (Fixed BC)
+        if self.input_path.is_dir():
+            self.mode = "random"
+            self.all_files = list(self.input_path.glob("*.json"))
+            if not self.all_files:
+                raise ValueError(f"No .json files found in {self.input_path}")
+            # Load one initially to setup spaces
+            self._load_circuit(self.all_files[0])
+        else:
+            self.mode = "fixed"
+            self._load_circuit(self.input_path)
 
-        # Graph Construction
+        self.observation_space = spaces.Dict({
+            "node_features": spaces.Box(low=0, high=1000, shape=(self.N_max, 5), dtype=np.float32),
+            "adj_matrix":    spaces.Box(low=0, high=1, shape=(self.N_max, self.N_max), dtype=np.float32),
+            "step_count":    spaces.Box(low=0, high=self.N_max, shape=(1,), dtype=np.float32),
+        })
+        self.action_space = spaces.Discrete(self.N_max * 2)
+
+    def _load_circuit(self, fpath):
+        self.cell_name = fpath.stem
+        self.devices, self.nets, self.grid = load_design_data(str(fpath))
+        self.raw_num_devices = len(self.devices)
+
+        # Build Graph
         self.adj_tensor = build_graph_from_nets(self.devices, self.nets)
         curr_n = self.adj_tensor.shape[0]
         if curr_n < self.N_max:
             pad = self.N_max - curr_n
             self.adj_tensor = F.pad(self.adj_tensor, (0, pad, 0, pad))
 
-        # Feature Construction
+        # Build Features
         adj_binary = (self.adj_tensor > 0).float()
         degrees = adj_binary.sum(dim=1).numpy()
-        self.feat_dim = 5
-        self.node_features = np.zeros(
-            (self.N_max, self.feat_dim), dtype=np.float32)
+        self.node_features = np.zeros((self.N_max, 5), dtype=np.float32)
 
         for i, d in enumerate(self.devices):
             d_type = d.get("device_type", d.get("type", "NMOS"))
@@ -277,35 +278,8 @@ class TransistorPlacementEnv(gym.Env):
             deg = degrees[i] if i < len(degrees) else 0
             self.node_features[i] = [t_val, w, l, nf, deg]
 
-        # Spaces
-        self.observation_space = spaces.Dict({
-            "node_features": spaces.Box(low=0, high=1000, shape=(self.N_max, self.feat_dim), dtype=np.float32),
-            "adj_matrix":    spaces.Box(low=0, high=1, shape=(self.N_max, self.N_max), dtype=np.float32),
-            "step_count":    spaces.Box(low=0, high=self.N_max, shape=(1,), dtype=np.float32),
-        })
-
-        # Action: 0~N-1 (Normal), N~2N-1 (Flipped)
-        self.action_space = spaces.Discrete(self.N_max * 2)
-
-        # Internal State
-        self.placed_mask = np.zeros(self.N_max, dtype=bool)
-        self.current_step = 0
-        # device_idx -> (x, y, orient, row_type, col_idx, flipped)
-        self.positions = {}
-
-        # Dual-Rail Cursors
-        self.pmos_next_col = 0
-        self.nmos_next_col = 0
-        self.pmos_cols = []  # List of (device_idx, flipped_bool)
-        self.nmos_cols = []
-
+        # Build Net Map
         self.device_sd_nets = defaultdict(dict)
-        self._build_sd_net_map()
-
-        # HPWL Tracking (Incremental)
-        self.last_total_hpwl = 0.0
-
-    def _build_sd_net_map(self):
         name_to_idx = {d["name"]: i for i, d in enumerate(self.devices)}
         for net in self.nets:
             valid_tokens = [tok for tok in net[:-1] if _want_pin_token(tok)]
@@ -315,27 +289,15 @@ class TransistorPlacementEnv(gym.Env):
                 if idx is not None and pin.upper() in ["S", "D"]:
                     self.device_sd_nets[idx][pin.upper()] = net[-1]
 
-    def action_masks(self) -> np.ndarray:
-        # Mask both Normal and Flipped actions for already placed devices
-        valid = np.ones(self.N_max * 2, dtype=bool)
-
-        placed_indices = np.where(self.placed_mask)[0]
-
-        # Disable Normal
-        valid[placed_indices] = False
-        # Disable Flipped
-        valid[placed_indices + self.N_max] = False
-
-        # Disable Padding
-        if self.raw_num_devices < self.N_max:
-            valid[self.raw_num_devices: self.N_max] = False
-            valid[self.raw_num_devices + self.N_max:] = False
-
-        return valid
-
     def reset(self, seed=None, options=None):
         super().reset(seed=seed)
-        self.placed_mask[:] = False
+
+        # [CRITICAL] Load new random circuit if in random mode
+        if self.mode == "random":
+            new_file = random.choice(self.all_files)
+            self._load_circuit(new_file)
+
+        self.placed_mask = np.zeros(self.N_max, dtype=bool)
         self.current_step = 0
         self.positions = {}
         self.pmos_next_col = 0
@@ -343,6 +305,11 @@ class TransistorPlacementEnv(gym.Env):
         self.pmos_cols = []
         self.nmos_cols = []
         self.last_total_hpwl = 0.0
+
+        # Metrics Counters
+        self.cnt_share = 0
+        self.cnt_break = 0
+
         return self._get_obs(), {}
 
     def _get_obs(self):
@@ -352,20 +319,25 @@ class TransistorPlacementEnv(gym.Env):
             "step_count": np.array([self.current_step], dtype=np.float32)
         }
 
+    def action_masks(self) -> np.ndarray:
+        valid = np.ones(self.N_max * 2, dtype=bool)
+        placed_indices = np.where(self.placed_mask)[0]
+        valid[placed_indices] = False
+        valid[placed_indices + self.N_max] = False
+        if self.raw_num_devices < self.N_max:
+            valid[self.raw_num_devices: self.N_max] = False
+            valid[self.raw_num_devices + self.N_max:] = False
+        return valid
+
     def _calculate_hpwl_proxy(self):
-        """Estimate HPWL based on current placement."""
         net_bbox = {}
         for idx, pos in self.positions.items():
-            # pos: (x_val, y_val, orient_str, row_type, col_int, flipped)
             col = pos[4]
-            # Differentiate Rows roughly for Y-dist
             row_val = 1.0 if pos[3] == "PMOS" else 0.0
-
             pins = self.device_sd_nets.get(idx, {})
             for _, net_name in pins.items():
                 if _is_power_net(net_name):
                     continue
-
                 if net_name not in net_bbox:
                     net_bbox[net_name] = [col, col, row_val, row_val]
                 else:
@@ -374,19 +346,15 @@ class TransistorPlacementEnv(gym.Env):
                     bb[1] = max(bb[1], col)
                     bb[2] = min(bb[2], row_val)
                     bb[3] = max(bb[3], row_val)
-
         total = 0.0
         for bb in net_bbox.values():
             w = bb[1] - bb[0]
-            # Weight Y distance more to encourage alignment?
             h = (bb[3] - bb[2]) * 5.0
             total += (w + h)
         return total
 
     def step(self, action):
         action = int(action)
-
-        # Decode Action
         device_idx = action % self.N_max
         flipped = (action >= self.N_max)
 
@@ -396,16 +364,14 @@ class TransistorPlacementEnv(gym.Env):
         dev = self.devices[device_idx]
         nf = int(dev.get("nf", 1))
         row_type = dev.get("device_type", dev.get("type"))
-
         self.placed_mask[device_idx] = True
 
-        # --- Placement Logic (Dual Rail) ---
         if row_type == "PMOS":
             start_col = self.pmos_next_col
             self.pmos_cols.append((device_idx, flipped))
             self.pmos_next_col += nf
             y_pos = self.grid["y_pmos"]
-            orient = "MX" if not flipped else "MX_R180"  # Example orientation string
+            orient = "MX" if not flipped else "MX_R180"
         else:
             start_col = self.nmos_next_col
             self.nmos_cols.append((device_idx, flipped))
@@ -417,13 +383,11 @@ class TransistorPlacementEnv(gym.Env):
         self.positions[device_idx] = (
             x_pos, y_pos, orient, row_type, start_col, flipped)
 
-        # --- Reward Calculation ---
         reward = 0.0
         w_share = self.reward_cfg.get("w_share", 5.0)
         w_break = self.reward_cfg.get("w_break", 2.0)
         w_hpwl = self.reward_cfg.get("w_hpwl", 0.5)
 
-        # 1. Diffusion Sharing Reward
         prev_device_info = None
         if row_type == "PMOS":
             if len(self.pmos_cols) > 1:
@@ -434,30 +398,22 @@ class TransistorPlacementEnv(gym.Env):
 
         if prev_device_info:
             prev_idx, prev_flip = prev_device_info
-
-            # Physics: Left Device's Right Pin vs Current Device's Left Pin
-            # Pin mapping: Normal (S..D), Flipped (D..S)
-
             prev_pins = self.device_sd_nets[prev_idx]
             curr_pins = self.device_sd_nets[device_idx]
-
-            # Right pin of prev: D if normal, S if flipped
             net_prev_right = prev_pins.get('S' if prev_flip else 'D')
-
-            # Left pin of curr: S if normal, D if flipped
             net_curr_left = curr_pins.get('D' if flipped else 'S')
 
             if net_prev_right and net_curr_left and net_prev_right == net_curr_left:
                 reward += w_share
+                self.cnt_share += 1  # [Metrics]
             else:
                 reward -= w_break
+                self.cnt_break += 1  # [Metrics]
 
-        # 2. Delta HPWL Penalty
         curr_total_hpwl = self._calculate_hpwl_proxy()
         delta_hpwl = curr_total_hpwl - self.last_total_hpwl
         if delta_hpwl > 0:
             reward -= (delta_hpwl * w_hpwl)
-
         self.last_total_hpwl = curr_total_hpwl
 
         self.current_step += 1
@@ -465,12 +421,9 @@ class TransistorPlacementEnv(gym.Env):
 
         info = {}
         if done:
-            # --- Construct Output for Callback ---
             final_width = max(self.pmos_next_col, self.nmos_next_col)
-
             placement_list = []
             for p_idx, pos_info in self.positions.items():
-                # pos_info: (x, y, orient, row, col, flipped)
                 p_dev = self.devices[p_idx]
                 placement_list.append({
                     "device_name": p_dev["name"],
@@ -484,9 +437,10 @@ class TransistorPlacementEnv(gym.Env):
             info["final_metrics"] = {
                 "width": final_width,
                 "hpwl": curr_total_hpwl,
-                "cell_name": self.cell_name,      # Critical for saving
-                "placement": placement_list,      # Critical for saving
-                "breaks": 0  # Placeholder
+                "shares": self.cnt_share,  # [Metrics]
+                "breaks": self.cnt_break,  # [Metrics]
+                "cell_name": self.cell_name,
+                "placement": placement_list
             }
 
         return self._get_obs(), reward, done, False, info
@@ -505,20 +459,18 @@ class TensorboardCallback(BaseCallback):
                 m = info["final_metrics"]
                 self.logger.record("metrics/width", m["width"])
                 self.logger.record("metrics/hpwl", m["hpwl"])
+                # [Metrics] New Records
+                self.logger.record("metrics/diffusion_shares", m["shares"])
+                self.logger.record("metrics/diffusion_breaks", m["breaks"])
         return True
 
 
 class SaveBestPlacementCallback(BaseCallback):
-    """
-    Saves the best placement found SO FAR for EACH cell.
-    Criteria: Minimize Width, then Minimize HPWL.
-    """
-
     def __init__(self, save_dir: pathlib.Path, verbose=0):
         super().__init__(verbose)
         self.save_dir = save_dir / "best_placements"
         self.save_dir.mkdir(parents=True, exist_ok=True)
-        self.best_records = {}  # cell_name -> (width, hpwl)
+        self.best_records = {}
 
     def _on_step(self) -> bool:
         for info in self.locals['infos']:
@@ -541,7 +493,8 @@ class SaveBestPlacementCallback(BaseCallback):
                 if update:
                     self.best_records[name] = (w, h)
                     if self.verbose > 0:
-                        print(f"[Best] {name}: W={w}, HPWL={h:.1f}")
+                        print(
+                            f"[Best] {name}: W={w}, HPWL={h:.1f}, Shares={m['shares']}")
                     self._save_csv(name, m["placement"], w, h)
         return True
 
@@ -579,7 +532,8 @@ def pretrain_from_expert_json(model, env_dir, expert_json_path, epochs=30):
         if not seq:
             continue
 
-        env = TransistorPlacementEnv(str(fpath), n_max_pad=model.policy.N_max)
+        # Mode="fixed" by passing file path directly
+        env = TransistorPlacementEnv(fpath, n_max_pad=model.policy.N_max)
         name2idx = {d["name"]: i for i, d in enumerate(env.devices)}
 
         obs = env.reset()[0]
@@ -590,12 +544,9 @@ def pretrain_from_expert_json(model, env_dir, expert_json_path, epochs=30):
             if env.placed_mask[idx]:
                 continue
 
-            # Expert data usually doesn't have 'Flip' info easily available
-            # We assume NO FLIP for BC (Action = idx) to learn basic order
             obs_c = {k: torch.tensor(v).clone() if isinstance(
                 v, np.ndarray) else v for k, v in obs.items()}
             trajectories.append((obs_c, idx))
-
             obs, _, done, _, _ = env.step(idx)
             if done:
                 break
@@ -614,7 +565,6 @@ def pretrain_from_expert_json(model, env_dir, expert_json_path, epochs=30):
         loss_sum = 0
         for i in range(0, len(trajectories), bs):
             batch = trajectories[i:i+bs]
-
             obs_batch = defaultdict(list)
             act_batch = []
             for o, a in batch:
@@ -652,7 +602,6 @@ def main():
     parser.add_argument("--learning-rate", type=float, default=1e-4)
     parser.add_argument("--ent-coef", type=float, default=0.01)
 
-    # Curriculum / Rewards
     parser.add_argument("--w-share", type=float, default=5.0)
     parser.add_argument("--w-break", type=float, default=2.0)
     parser.add_argument("--w-hpwl",  type=float, default=0.5)
@@ -667,10 +616,10 @@ def main():
     }
 
     def make_env():
-        # Randomly sample a file for each episode
-        f = random.choice(list(args.env_dir.glob("*.json")))
+        # [CRITICAL] Pass the DIRECTORY, not a single file.
+        # The env will handle random selection internally on reset().
         env = TransistorPlacementEnv(
-            str(f), n_max_pad=50, reward_cfg=reward_cfg)
+            args.env_dir, n_max_pad=50, reward_cfg=reward_cfg)
         return ActionMasker(env, lambda e: e.action_masks())
 
     env = DummyVecEnv([make_env])
@@ -685,11 +634,9 @@ def main():
         model.policy.load_state_dict(MaskablePPO.load(
             args.resume_from).policy.state_dict())
 
-    # Pretrain logic (Optional, based on expert_data presence)
     pretrain_from_expert_json(
         model, args.env_dir, "expert_data.json", epochs=50)
 
-    # Callbacks
     callbacks = CallbackList([
         TensorboardCallback(),
         SaveBestPlacementCallback(args.output_dir, verbose=1)
