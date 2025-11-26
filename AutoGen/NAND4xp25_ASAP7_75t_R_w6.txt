@@ -1,0 +1,20 @@
+-------- Solution 1 --------
+[Column 1]
+NMOS : MM0(3) [Y A pd1], PMOS : MM1(2) [VDD A Y]
+[Column 2]
+NMOS : MM4(3) [pd1 B pd2], PMOS : MM2(2) [Y B VDD]
+[Column 3]
+NMOS : MM3(3) [pd2 C pd3], PMOS : MM6(2) [VDD C Y]
+[Column 4]
+NMOS : MM5(3) [pd3 D VSS], PMOS : MM7(2) [Y D VDD]
+
+-------- Solution 2 --------
+[Column 1]
+NMOS : MM0(3) [Y A pd1], PMOS : MM1(2) [Y A VDD]
+[Column 2]
+NMOS : MM4(3) [pd1 B pd2], PMOS : MM2(2) [VDD B Y]
+[Column 3]
+NMOS : MM3(3) [pd2 C pd3], PMOS : MM6(2) [Y C VDD]
+[Column 4]
+NMOS : MM5(3) [pd3 D VSS], PMOS : MM7(2) [VDD D Y]
+

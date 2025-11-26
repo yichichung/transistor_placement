@@ -1,0 +1,12 @@
+-------- Solution 1 --------
+[Column 1]
+NMOS : MM1(3) [VSS net61 Y], PMOS : MM0(3) [VDD net61 Y]
+[Column 2]
+NMOS : MM1(3) [Y net61 VSS], PMOS : MM0(3) [Y net61 VDD]
+[Column 3]
+NMOS : MM14(3) [VSS C net61], PMOS : MM8(3) [VDD C net66]
+[Column 4]
+NMOS : MM13(3) [net61 B VSS], PMOS : MM10(3) [net66 B net67]
+[Column 5]
+NMOS : MM12(3) [VSS A net61], PMOS : MM11(3) [net67 A net61]
+

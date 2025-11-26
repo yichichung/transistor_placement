@@ -1,0 +1,8 @@
+-------- Solution 1 --------
+[Column 1]
+NMOS : MM4(2) [VSS B Y], PMOS : MM0(3) [Y B net18]
+[Column 2]
+NMOS : MM3(3) [Y A1 net29], PMOS : MM1(3) [net18 A1 VDD]
+[Column 3]
+NMOS : MM2(3) [net29 A2 VSS], PMOS : MM5(3) [VDD A2 net18]
+

@@ -1,0 +1,18 @@
+-------- Solution 1 --------
+[Column 1]
+NMOS : MM24(3) [VSS net020 Y], PMOS : MM25(3) [VDD net020 Y]
+[Column 2]
+NMOS : MM24(3) [Y net020 VSS], PMOS : MM25(3) [Y net020 VDD]
+[Column 3]
+NMOS : MM1(3) [VSS A3 net024], PMOS : MM5(2) [VDD A3 net15]
+[Column 4]
+NMOS : MM0(3) [net024 A2 net40], PMOS : MM4(2) [net15 A2 VDD]
+[Column 5]
+NMOS : MM7(3) [net40 A1 net020], PMOS : MM21(2) [VDD A1 net15]
+[Column 6]
+NMOS : MM10(3) [net020 B1 net39], PMOS : MM2(2) [net15 B1 net020]
+[Column 7]
+NMOS : MM8(3) [net39 B2 net022], PMOS : MM3(2) [net020 B2 net15]
+[Column 8]
+NMOS : MM9(3) [net022 B3 VSS], PMOS : MM6(2) [net15 B3 net020]
+

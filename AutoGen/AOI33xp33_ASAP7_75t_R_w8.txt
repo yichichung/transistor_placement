@@ -1,0 +1,28 @@
+-------- Solution 1 --------
+[Column 1]
+NMOS : MM48(3) [VSS B3 net51], PMOS : MM37(2) [Y B3 net015]
+[Column 2]
+NMOS : MM45(3) [net51 B2 net52], PMOS : MM38(2) [net015 B2 Y]
+[Column 3]
+NMOS : MM44(3) [net52 B1 Y], PMOS : MM35(2) [Y B1 net015]
+[Column 4]
+NMOS : MM39(3) [Y A3 net54], PMOS : MM33(2) [net015 A3 VDD]
+[Column 5]
+NMOS : MM46(3) [net54 A2 net53], PMOS : MM32(2) [VDD A2 net015]
+[Column 6]
+NMOS : MM47(3) [net53 A1 VSS], PMOS : MM31(2) [net015 A1 VDD]
+
+-------- Solution 2 --------
+[Column 1]
+NMOS : MM47(3) [VSS A1 net53], PMOS : MM31(2) [VDD A1 net015]
+[Column 2]
+NMOS : MM46(3) [net53 A2 net54], PMOS : MM32(2) [net015 A2 VDD]
+[Column 3]
+NMOS : MM39(3) [net54 A3 Y], PMOS : MM33(2) [VDD A3 net015]
+[Column 4]
+NMOS : MM44(3) [Y B1 net52], PMOS : MM35(2) [net015 B1 Y]
+[Column 5]
+NMOS : MM45(3) [net52 B2 net51], PMOS : MM38(2) [Y B2 net015]
+[Column 6]
+NMOS : MM48(3) [net51 B3 VSS], PMOS : MM37(2) [net015 B3 Y]
+

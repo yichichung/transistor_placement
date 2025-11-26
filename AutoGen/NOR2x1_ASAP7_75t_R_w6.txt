@@ -1,0 +1,130 @@
+-------- Solution 1 --------
+[Column 1]
+NMOS : dummy(0) [dummy dummy dummy], PMOS : MM3(3) [net16 A VDD]
+[Column 2]
+NMOS : MM2(3) [VSS A Y], PMOS : MM3(3) [VDD A net16]
+[Column 3]
+NMOS : MM1(3) [Y B VSS], PMOS : MM4(3) [net16 B Y]
+[Column 4]
+NMOS : dummy(0) [dummy dummy dummy], PMOS : MM4(3) [Y B net16]
+
+-------- Solution 2 --------
+[Column 1]
+NMOS : dummy(0) [dummy dummy dummy], PMOS : MM3(3) [net16 A VDD]
+[Column 2]
+NMOS : MM2(3) [VSS A Y], PMOS : MM3(3) [VDD A net16]
+[Column 3]
+NMOS : dummy(0) [dummy dummy dummy], PMOS : MM4(3) [net16 B Y]
+[Column 4]
+NMOS : MM1(3) [Y B VSS], PMOS : MM4(3) [Y B net16]
+
+-------- Solution 3 --------
+[Column 1]
+NMOS : MM2(3) [VSS A Y], PMOS : MM3(3) [net16 A VDD]
+[Column 2]
+NMOS : dummy(0) [dummy dummy dummy], PMOS : MM3(3) [VDD A net16]
+[Column 3]
+NMOS : MM1(3) [Y B VSS], PMOS : MM4(3) [net16 B Y]
+[Column 4]
+NMOS : dummy(0) [dummy dummy dummy], PMOS : MM4(3) [Y B net16]
+
+-------- Solution 4 --------
+[Column 1]
+NMOS : dummy(0) [dummy dummy dummy], PMOS : MM3(3) [net16 A VDD]
+[Column 2]
+NMOS : MM2(3) [Y A VSS], PMOS : MM3(3) [VDD A net16]
+[Column 3]
+NMOS : dummy(0) [dummy dummy dummy], PMOS : MM4(3) [net16 B Y]
+[Column 4]
+NMOS : MM1(3) [Y B VSS], PMOS : MM4(3) [Y B net16]
+
+-------- Solution 5 --------
+[Column 1]
+NMOS : MM2(3) [VSS A Y], PMOS : MM3(3) [net16 A VDD]
+[Column 2]
+NMOS : dummy(0) [dummy dummy dummy], PMOS : MM3(3) [VDD A net16]
+[Column 3]
+NMOS : dummy(0) [dummy dummy dummy], PMOS : MM4(3) [net16 B Y]
+[Column 4]
+NMOS : MM1(3) [Y B VSS], PMOS : MM4(3) [Y B net16]
+
+-------- Solution 6 --------
+[Column 1]
+NMOS : dummy(0) [dummy dummy dummy], PMOS : MM3(3) [net16 A VDD]
+[Column 2]
+NMOS : MM2(3) [Y A VSS], PMOS : MM3(3) [VDD A net16]
+[Column 3]
+NMOS : MM1(3) [VSS B Y], PMOS : MM4(3) [net16 B Y]
+[Column 4]
+NMOS : dummy(0) [dummy dummy dummy], PMOS : MM4(3) [Y B net16]
+
+-------- Solution 7 --------
+[Column 1]
+NMOS : MM2(3) [VSS A Y], PMOS : MM3(3) [net16 A VDD]
+[Column 2]
+NMOS : dummy(0) [dummy dummy dummy], PMOS : MM3(3) [VDD A net16]
+[Column 3]
+NMOS : MM1(3) [VSS B Y], PMOS : MM4(3) [net16 B Y]
+[Column 4]
+NMOS : dummy(0) [dummy dummy dummy], PMOS : MM4(3) [Y B net16]
+
+-------- Solution 8 --------
+[Column 1]
+NMOS : dummy(0) [dummy dummy dummy], PMOS : MM3(3) [net16 A VDD]
+[Column 2]
+NMOS : MM2(3) [VSS A Y], PMOS : MM3(3) [VDD A net16]
+[Column 3]
+NMOS : dummy(0) [dummy dummy dummy], PMOS : MM4(3) [net16 B Y]
+[Column 4]
+NMOS : MM1(3) [VSS B Y], PMOS : MM4(3) [Y B net16]
+
+-------- Solution 9 --------
+[Column 1]
+NMOS : MM2(3) [Y A VSS], PMOS : MM3(3) [net16 A VDD]
+[Column 2]
+NMOS : dummy(0) [dummy dummy dummy], PMOS : MM3(3) [VDD A net16]
+[Column 3]
+NMOS : MM1(3) [Y B VSS], PMOS : MM4(3) [net16 B Y]
+[Column 4]
+NMOS : dummy(0) [dummy dummy dummy], PMOS : MM4(3) [Y B net16]
+
+-------- Solution 10 --------
+[Column 1]
+NMOS : MM2(3) [Y A VSS], PMOS : MM3(3) [net16 A VDD]
+[Column 2]
+NMOS : dummy(0) [dummy dummy dummy], PMOS : MM3(3) [VDD A net16]
+[Column 3]
+NMOS : dummy(0) [dummy dummy dummy], PMOS : MM4(3) [net16 B Y]
+[Column 4]
+NMOS : MM1(3) [Y B VSS], PMOS : MM4(3) [Y B net16]
+
+-------- Solution 11 --------
+[Column 1]
+NMOS : MM2(3) [Y A VSS], PMOS : MM3(3) [net16 A VDD]
+[Column 2]
+NMOS : dummy(0) [dummy dummy dummy], PMOS : MM3(3) [VDD A net16]
+[Column 3]
+NMOS : MM1(3) [VSS B Y], PMOS : MM4(3) [net16 B Y]
+[Column 4]
+NMOS : dummy(0) [dummy dummy dummy], PMOS : MM4(3) [Y B net16]
+
+-------- Solution 12 --------
+[Column 1]
+NMOS : dummy(0) [dummy dummy dummy], PMOS : MM3(3) [net16 A VDD]
+[Column 2]
+NMOS : MM2(3) [Y A VSS], PMOS : MM3(3) [VDD A net16]
+[Column 3]
+NMOS : dummy(0) [dummy dummy dummy], PMOS : MM4(3) [net16 B Y]
+[Column 4]
+NMOS : MM1(3) [VSS B Y], PMOS : MM4(3) [Y B net16]
+
+-------- Solution 13 --------
+[Column 1]
+NMOS : MM2(3) [VSS A Y], PMOS : MM3(3) [net16 A VDD]
+[Column 2]
+NMOS : dummy(0) [dummy dummy dummy], PMOS : MM3(3) [VDD A net16]
+[Column 3]
+NMOS : dummy(0) [dummy dummy dummy], PMOS : MM4(3) [net16 B Y]
+[Column 4]
+NMOS : MM1(3) [VSS B Y], PMOS : MM4(3) [Y B net16]
+
